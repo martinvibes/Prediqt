@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s http://localhost:3000/pulse -o /dev/null -w \"HTTP %{http_code}\\\\n\")"
+    ]
+  }
+}
