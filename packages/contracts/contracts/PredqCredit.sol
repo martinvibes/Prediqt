@@ -35,6 +35,14 @@ contract PredqCredit is SepoliaConfig {
     /// signed for. This is how rooms place bets without exposing balances.
     mapping(address => bool) public authorizedSpender;
 
+    /// The factory address can also authorize spenders (for new markets).
+    address public factory;
+
+    modifier onlyOwnerOrFactory() {
+        require(msg.sender == owner || msg.sender == factory, "not owner/factory");
+        _;
+    }
+
     modifier onlyOwner() {
         require(msg.sender == owner, "not owner");
         _;
@@ -46,8 +54,13 @@ contract PredqCredit is SepoliaConfig {
 
     // ─────────────────────────── ADMIN ───────────────────────────
 
+    /// Set the MarketFactory address (one-time by owner).
+    function setFactory(address _factory) external onlyOwner {
+        factory = _factory;
+    }
+
     /// Authorize a market/agent contract to call confidentialTransferFrom.
-    function setAuthorizedSpender(address spender, bool allowed) external onlyOwner {
+    function setAuthorizedSpender(address spender, bool allowed) external onlyOwnerOrFactory {
         authorizedSpender[spender] = allowed;
         emit AuthorizedSpender(spender, allowed);
     }

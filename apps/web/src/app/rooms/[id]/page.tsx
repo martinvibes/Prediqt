@@ -1,39 +1,40 @@
 'use client';
 
-import { use } from 'react';
+import { use, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Lock, Globe2, Users, Calendar, UserPlus } from 'lucide-react';
+import { ArrowLeft, Lock, Globe2, Users, Calendar, UserPlus, Plus } from 'lucide-react';
 
 import { Nav } from '@/components/nav';
 import { Footer } from '@/components/footer';
 import { AuthGate } from '@/components/auth-gate';
 import { Button } from '@/components/ui/button';
+import { Input, Textarea } from '@/components/ui/input';
 import { QMark } from '@/components/q-mark';
+import { MarketCard } from '@/components/market-card';
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { useRoom } from '@/hooks/use-rooms';
+import { useRoomMarkets, useCreateMarket } from '@/hooks/use-markets';
 import { useAuth } from '@/hooks/use-auth';
 import { RoomType } from '@prediqt/shared';
-import { shortAddr } from '@/lib/utils';
+import { shortAddr, cn } from '@/lib/utils';
 
 export default function RoomPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const roomId = (() => {
-    try {
-      return BigInt(id);
-    } catch {
-      return null;
-    }
+    try { return BigInt(id); } catch { return null; }
   })();
 
   return (
     <main className="relative min-h-screen flex flex-col">
       <Nav />
       <AuthGate>
-        {roomId === null ? (
-          <InvalidId />
-        ) : (
-          <RoomContent roomId={roomId} />
-        )}
+        {roomId === null ? <InvalidId /> : <RoomContent roomId={roomId} />}
       </AuthGate>
       <Footer />
     </main>
@@ -43,6 +44,8 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
 function RoomContent({ roomId }: { roomId: bigint }) {
   const { address } = useAuth();
   const { room, members, loading } = useRoom(roomId);
+  const { markets, loading: mktsLoading, refresh: refreshMarkets } = useRoomMarkets(roomId);
+  const [showCreate, setShowCreate] = useState(false);
 
   if (loading) {
     return (
@@ -73,10 +76,7 @@ function RoomContent({ roomId }: { roomId: bigint }) {
   return (
     <section className="flex-1 px-6 pt-16 pb-24">
       <div className="mx-auto max-w-[1280px]">
-        <Link
-          href="/pulse"
-          className="inline-flex items-center gap-2 label-micro hover:text-ink mb-10"
-        >
+        <Link href="/pulse" className="inline-flex items-center gap-2 label-micro hover:text-ink mb-10">
           <ArrowLeft className="h-3 w-3" />
           back to pulse
         </Link>
@@ -86,7 +86,7 @@ function RoomContent({ roomId }: { roomId: bigint }) {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="grid grid-cols-1 md:grid-cols-12 gap-y-8 mb-16"
+          className="grid grid-cols-1 md:grid-cols-12 gap-y-8 mb-12"
         >
           <div className="md:col-span-8 space-y-5">
             <div className="flex items-center gap-3 label-micro">
@@ -108,47 +108,61 @@ function RoomContent({ roomId }: { roomId: bigint }) {
               </p>
             )}
           </div>
-
           <div className="md:col-span-4 flex md:justify-end items-end">
             <div className="grid grid-cols-2 gap-3 w-full max-w-xs">
               <Stat label="Members" value={room.memberCount.toString()} />
-              <Stat label="Markets" value="0" />
+              <Stat label="Markets" value={markets.length.toString()} />
             </div>
           </div>
         </motion.div>
 
         {/* Two-column body */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Markets column — Week 2 placeholder */}
-          <div className="lg:col-span-8">
-            <SectionLabel>Markets</SectionLabel>
-            <div className="mt-5 rounded-3xl border border-dashed border-line p-12 md:p-16 text-center space-y-6">
-              <QMark size={56} className="mx-auto opacity-40" />
-              <div className="space-y-2 max-w-md mx-auto">
-                <h3 className="font-display text-3xl tracking-crunch">
-                  No markets <span className="italic text-ink-dim">yet.</span>
-                </h3>
-                <p className="text-ink-dim text-sm">
-                  Posting markets unlocks in Week 2 — encrypted YES/NO bets on a
-                  constant-product AMM.
-                </p>
-              </div>
-              <Button variant="outline" disabled>
-                Post a market — coming soon
+          {/* Markets column */}
+          <div className="lg:col-span-8 space-y-5">
+            <div className="flex items-center justify-between">
+              <SectionLabel>Markets</SectionLabel>
+              <Button size="sm" onClick={() => setShowCreate(true)}>
+                <Plus className="h-3.5 w-3.5" />
+                New market
               </Button>
             </div>
+
+            {mktsLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="shimmer-overlay rounded-2xl border border-line bg-canvas-raised h-36" />
+                ))}
+              </div>
+            ) : markets.length === 0 ? (
+              <div className="rounded-3xl border border-dashed border-line p-12 text-center space-y-6">
+                <QMark size={48} className="mx-auto opacity-40" />
+                <div className="space-y-2 max-w-md mx-auto">
+                  <h3 className="font-display text-2xl tracking-crunch">
+                    No markets <span className="italic text-ink-dim">yet.</span>
+                  </h3>
+                  <p className="text-ink-dim text-sm">
+                    Post the first question for this room.
+                  </p>
+                </div>
+                <Button onClick={() => setShowCreate(true)}>
+                  <Plus className="h-3.5 w-3.5" />
+                  Create a market
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {markets.map((m, i) => (
+                  <MarketCard key={m.id.toString()} market={m} index={i} />
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Members column */}
+          {/* Members sidebar */}
           <aside className="lg:col-span-4 space-y-3">
             <div className="flex items-center justify-between">
               <SectionLabel>Members</SectionLabel>
-              {isCreator && isPrivate && (
-                <Button size="sm" variant="ghost" disabled>
-                  <UserPlus className="h-3 w-3" />
-                  Invite
-                </Button>
-              )}
             </div>
             <div className="rounded-2xl border border-line bg-canvas-raised divide-y divide-line">
               {members.map((m, i) => (
@@ -162,9 +176,7 @@ function RoomContent({ roomId }: { roomId: bigint }) {
                   <div className="flex items-center gap-3">
                     <Avatar seed={m} />
                     <div>
-                      <div className="font-mono text-xs tabular">
-                        {shortAddr(m, 6, 4)}
-                      </div>
+                      <div className="font-mono text-xs tabular">{shortAddr(m, 6, 4)}</div>
                       {m.toLowerCase() === room.creator.toLowerCase() && (
                         <div className="label-micro text-volt mt-0.5">creator</div>
                       )}
@@ -176,7 +188,6 @@ function RoomContent({ roomId }: { roomId: bigint }) {
                 </motion.div>
               ))}
             </div>
-
             <div className="rounded-2xl border border-line bg-canvas-raised p-5 space-y-2">
               <div className="label-micro flex items-center gap-2">
                 <Calendar className="h-3 w-3" />
@@ -184,16 +195,95 @@ function RoomContent({ roomId }: { roomId: bigint }) {
               </div>
               <div className="font-mono text-sm tabular text-ink-dim">
                 {new Date(Number(room.createdAt) * 1000).toLocaleDateString(undefined, {
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric',
+                  year: 'numeric', month: 'short', day: 'numeric',
                 })}
               </div>
             </div>
           </aside>
         </div>
+
+        <CreateMarketDialog
+          roomId={roomId}
+          open={showCreate}
+          onClose={() => setShowCreate(false)}
+          onCreated={refreshMarkets}
+        />
       </div>
     </section>
+  );
+}
+
+function CreateMarketDialog({
+  roomId,
+  open,
+  onClose,
+  onCreated,
+}: {
+  roomId: bigint;
+  open: boolean;
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const { create, busy } = useCreateMarket();
+  const [question, setQuestion] = useState('');
+  const [resolveDate, setResolveDate] = useState('');
+
+  const canSubmit = question.trim().length > 0 && resolveDate.length > 0;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSubmit) return;
+    const ts = Math.floor(new Date(resolveDate).getTime() / 1000);
+    try {
+      await create(roomId, question.trim(), ts);
+      setQuestion('');
+      setResolveDate('');
+      onClose();
+      onCreated();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg p-0 overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+          <div>
+            <DialogTitle>Post a market</DialogTitle>
+            <DialogDescription>
+              Ask a yes/no question. The room will bet on it.
+            </DialogDescription>
+          </div>
+          <div className="space-y-2">
+            <label className="label-micro">Question</label>
+            <Textarea
+              placeholder="Will France win the World Cup Final?"
+              value={question}
+              onChange={(e) => setQuestion(e.target.value.slice(0, 280))}
+              className="min-h-[80px]"
+              autoFocus
+            />
+            <div className="label-micro text-ink-muted text-right">{question.length}/280</div>
+          </div>
+          <div className="space-y-2">
+            <label className="label-micro">Resolves at</label>
+            <Input
+              type="datetime-local"
+              value={resolveDate}
+              onChange={(e) => setResolveDate(e.target.value)}
+              min={new Date().toISOString().slice(0, 16)}
+            />
+          </div>
+          <div className="flex items-center justify-between pt-4 border-t border-line">
+            <span className="label-micro">You&apos;ll be the resolver.</span>
+            <Button type="submit" disabled={!canSubmit || busy} loading={busy}>
+              Create market
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -216,7 +306,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 function Avatar({ seed }: { seed: string }) {
-  // Deterministic 2-color glyph derived from the address.
   const h1 = parseInt(seed.slice(2, 6) || '0', 16);
   const h2 = parseInt(seed.slice(6, 10) || '0', 16);
   const useVolt = h1 % 2 === 0;
