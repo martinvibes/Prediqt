@@ -1,0 +1,36 @@
+name: agent-tick
+
+on:
+  # Every 10 minutes — GitHub Actions allows this for free.
+  # The deployed Vercel app exposes /api/agent-tick which:
+  #   • resolves expired markets via the oracle
+  #   • runs each AI agent's bet decisions against open markets
+  schedule:
+    - cron: '*/10 * * * *'
+  # Allow manual triggering from the Actions tab.
+  workflow_dispatch:
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit agent-tick endpoint
+        env:
+          DEPLOY_URL:    ${{ secrets.VERCEL_DEPLOY_URL }}
+          TICK_SECRET:   ${{ secrets.AGENT_TICK_SECRET }}
+        run: |
+          if [ -z "$DEPLOY_URL" ] || [ -z "$TICK_SECRET" ]; then
+            echo "Missing VERCEL_DEPLOY_URL or AGENT_TICK_SECRET secret"
+            exit 1
+          fi
+          echo "→ POST $DEPLOY_URL/api/agent-tick"
+          response=$(curl -sS -m 90 -w "\n%{http_code}" -X POST "$DEPLOY_URL/api/agent-tick" \
+            -H "Authorization: Bearer $TICK_SECRET" \
+            -H "Content-Type: application/json")
+          body=$(echo "$response" | sed '$d')
+          status=$(echo "$response" | tail -n1)
+          echo "status: $status"
+          echo "$body" | head -c 4000
+          if [ "$status" != "200" ]; then
+            exit 1
+          fi
