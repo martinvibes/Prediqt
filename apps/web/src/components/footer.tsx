@@ -1,22 +1,21 @@
-import Link from 'next/link';
 import { QMark } from './q-mark';
 
 export function Footer() {
   return (
-    <footer className="mt-24 border-t border-line">
-      <div className="mx-auto max-w-[1280px] px-6 py-12">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+    <footer className="mt-auto border-t border-line">
+      <div className="mx-auto max-w-[1320px] px-5 py-8">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <QMark size={20} />
-            <span className="font-display text-xl tracking-crunch">prediqt</span>
-            <span className="label-micro ml-3">v0.1 · sepolia testnet</span>
+            <QMark size={16} />
+            <span className="font-display text-lg tracking-crunch">prediqt</span>
+            <span className="label ml-2">v0.1 · sepolia</span>
           </div>
-          <div className="flex items-center gap-6 label-micro">
-            <Link href="https://www.zama.ai/" target="_blank" className="hover:text-ink">
+          <div className="flex items-center gap-4 label">
+            <a href="https://www.zama.ai/" target="_blank" rel="noreferrer" className="hover:text-ink transition-colors">
               Powered by Zama FHE
-            </Link>
+            </a>
             <span className="text-ink-ghost">·</span>
-            <span>Bet privately. With anyone. On anything.</span>
+            <span>Predict privately</span>
           </div>
         </div>
       </div>

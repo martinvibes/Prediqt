@@ -6,36 +6,40 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Two-tone brand palette — volt + coral on warm-black canvas.
-        // Neutrals are structure, not color.
+        // ── Premium dark surfaces ──
         canvas: {
-          DEFAULT: '#07070A',
-          raised: '#0E0E12',
-          sunken: '#040406',
+          DEFAULT: '#09090B',     // matte black
+          raised: '#111113',      // elevated surface
+          elevated: '#18181B',    // cards, modals
+          sunken: '#050506',      // deep pits
         },
+        // ── Typography ──
         ink: {
-          DEFAULT: '#F4F4F0', // warm white
-          dim: '#A0A0A6',
-          muted: '#5F5F66',
-          ghost: '#2C2C32',
+          DEFAULT: '#FAFAFA',     // pure white-ish
+          secondary: '#A1A1AA',   // zinc-400
+          muted: '#71717A',       // zinc-500
+          ghost: '#3F3F46',       // zinc-700
+          faint: '#27272A',       // zinc-800
         },
+        // ── Borders & lines ──
         line: {
-          DEFAULT: '#1C1C22',
-          strong: '#2A2A32',
-          faint: '#13131A',
+          DEFAULT: 'rgba(255,255,255,0.06)',
+          strong: 'rgba(255,255,255,0.10)',
+          faint: 'rgba(255,255,255,0.03)',
         },
+        // ── Brand: single accent — electric lime ──
         volt: {
-          DEFAULT: '#D9FF3C',
-          deep: '#A6CC1F',
-          glow: '#E8FF7A',
-          dim: '#5C6B1A',
+          DEFAULT: '#CAFF3C',
+          bright: '#E0FF7A',
+          deep: '#9BCC1F',
+          dim: 'rgba(202,255,60,0.15)',
+          subtle: 'rgba(202,255,60,0.06)',
         },
-        coral: {
-          DEFAULT: '#FF5C5C',
-          deep: '#D43A3A',
-          glow: '#FF8585',
-          dim: '#6B2424',
-        },
+        // ── Semantic ──
+        up: '#22C55E',            // green-500
+        down: '#EF4444',          // red-500
+        'up-dim': 'rgba(34,197,94,0.15)',
+        'down-dim': 'rgba(239,68,68,0.15)',
       },
       fontFamily: {
         display: ['var(--font-display)', 'serif'],
@@ -47,54 +51,63 @@ const config: Config = {
         crunch: '-0.06em',
       },
       fontSize: {
-        // Editorial scale — big-and-small, no middle ground.
-        micro: ['10px', { lineHeight: '1.2', letterSpacing: '0.08em' }],
-        hero: ['clamp(3.5rem, 8vw, 7rem)', { lineHeight: '0.92', letterSpacing: '-0.04em' }],
-        mega: ['clamp(2.5rem, 5vw, 4.5rem)', { lineHeight: '0.95', letterSpacing: '-0.03em' }],
+        micro: ['10px', { lineHeight: '1.2', letterSpacing: '0.1em' }],
+        hero: ['clamp(3rem, 7vw, 6rem)', { lineHeight: '0.92', letterSpacing: '-0.04em' }],
+        mega: ['clamp(2rem, 4.5vw, 3.5rem)', { lineHeight: '1.0', letterSpacing: '-0.03em' }],
+        stat: ['clamp(2rem, 3vw, 2.75rem)', { lineHeight: '1', letterSpacing: '-0.02em' }],
+      },
+      borderRadius: {
+        '2xl': '16px',
+        '3xl': '20px',
+        '4xl': '24px',
+      },
+      boxShadow: {
+        'glow-volt': '0 0 60px -12px rgba(202,255,60,0.35)',
+        'glow-sm': '0 0 20px -4px rgba(202,255,60,0.25)',
+        'card': '0 1px 2px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04)',
+        'card-hover': '0 8px 32px -8px rgba(0,0,0,0.6), 0 0 0 1px rgba(202,255,60,0.12)',
+        'elevated': '0 16px 64px -16px rgba(0,0,0,0.8)',
+        'inner-glow': 'inset 0 1px 0 rgba(255,255,255,0.04)',
+      },
+      backgroundImage: {
+        'glass': 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
+        'glass-strong': 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)',
+        'surface-gradient': 'linear-gradient(180deg, #111113 0%, #09090B 100%)',
+        'hero-radial': 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(202,255,60,0.08) 0%, transparent 60%)',
       },
       animation: {
         'fade-up': 'fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards',
         'fade-in': 'fade-in 0.4s ease forwards',
-        'q-pulse': 'q-pulse 4s ease-in-out infinite',
-        'shimmer': 'shimmer 2.4s linear infinite',
-        'cipher-cycle': 'cipher-cycle 0.08s steps(1) infinite',
-        'bar-fill': 'bar-fill 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards',
+        'pulse-slow': 'pulse-slow 3s ease-in-out infinite',
+        'shimmer': 'shimmer 2s linear infinite',
+        'number-tick': 'number-tick 0.3s cubic-bezier(0.22, 1, 0.36, 1)',
+        'slide-up': 'slide-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards',
       },
       keyframes: {
         'fade-up': {
-          '0%': { opacity: '0', transform: 'translateY(12px)' },
+          '0%': { opacity: '0', transform: 'translateY(16px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
         'fade-in': {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
         },
-        'q-pulse': {
-          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
-          '50%': { opacity: '0.85', transform: 'scale(1.02)' },
+        'pulse-slow': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.6' },
         },
         'shimmer': {
           '0%': { transform: 'translateX(-100%)' },
           '100%': { transform: 'translateX(100%)' },
         },
-        'cipher-cycle': {
-          '0%, 100%': { opacity: '1' },
+        'number-tick': {
+          '0%': { transform: 'translateY(-100%)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
         },
-        'bar-fill': {
-          '0%': { transform: 'scaleX(0)' },
-          '100%': { transform: 'scaleX(1)' },
+        'slide-up': {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
-      },
-      boxShadow: {
-        'glow-volt': '0 0 0 1px rgba(217, 255, 60, 0.15), 0 0 40px -8px rgba(217, 255, 60, 0.4)',
-        'glow-coral': '0 0 0 1px rgba(255, 92, 92, 0.15), 0 0 40px -8px rgba(255, 92, 92, 0.4)',
-        'inset-line': 'inset 0 0 0 1px rgba(255, 255, 255, 0.06)',
-      },
-      backgroundImage: {
-        'volt-fade': 'linear-gradient(135deg, #D9FF3C 0%, #A6CC1F 100%)',
-        'coral-fade': 'linear-gradient(135deg, #FF5C5C 0%, #D43A3A 100%)',
-        'canvas-radial':
-          'radial-gradient(ellipse at top, rgba(217,255,60,0.04) 0%, transparent 60%)',
       },
     },
   },

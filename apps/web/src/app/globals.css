@@ -11,118 +11,121 @@
 
   html {
     color-scheme: dark;
-    background: #07070a;
+    background: #09090B;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
 
   body {
-    @apply bg-canvas text-ink font-sans antialiased min-h-screen;
-    background-image:
-      radial-gradient(ellipse 60% 80% at 50% -10%, rgba(217, 255, 60, 0.06) 0%, transparent 60%),
-      radial-gradient(ellipse 40% 50% at 100% 100%, rgba(255, 92, 92, 0.04) 0%, transparent 60%);
-    background-attachment: fixed;
+    @apply bg-canvas text-ink font-sans min-h-screen;
   }
 
   ::selection {
-    background: #d9ff3c;
-    color: #07070a;
+    background: #CAFF3C;
+    color: #09090B;
   }
 
-  /* Numerics use the mono font's tabular figures */
   .tabular {
     font-variant-numeric: tabular-nums;
     font-feature-settings: 'tnum';
   }
 
-  /* Hide scrollbars on horizontal scroll containers */
-  .scroll-h-clean {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  .scroll-h-clean::-webkit-scrollbar {
-    display: none;
-  }
+  /* Custom scrollbar — thin, dark */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.14); }
 }
 
 @layer components {
-  .surface {
-    @apply bg-canvas-raised border border-line rounded-2xl;
-  }
-
-  .surface-line {
-    @apply border border-line rounded-2xl;
-  }
-
+  /* ── Typography ── */
   .heading-display {
     @apply font-display tracking-crunch;
   }
 
-  .label-micro {
-    @apply font-mono text-micro uppercase tracking-widest text-ink-dim;
+  .label {
+    @apply font-mono text-[11px] uppercase tracking-[0.12em] text-ink-muted;
   }
 
-  /* Editorial dot — used as bullet, divider, and "Q" mark accent */
+  /* ── Surfaces ── */
+  .surface {
+    @apply bg-canvas-elevated border border-line rounded-2xl shadow-card;
+  }
+
+  .surface-glass {
+    @apply bg-glass backdrop-blur-xl border border-line rounded-2xl shadow-card;
+  }
+
+  .surface-glass-strong {
+    @apply bg-glass-strong backdrop-blur-2xl border border-line-strong rounded-2xl shadow-card;
+  }
+
+  /* ── Interactive surface — lifts on hover ── */
+  .surface-interactive {
+    @apply surface transition-all duration-300 ease-out
+      hover:shadow-card-hover hover:border-line-strong hover:-translate-y-0.5;
+  }
+
+  /* ── Focus ring ── */
+  .ring-focus {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt/50
+      focus-visible:ring-offset-2 focus-visible:ring-offset-canvas;
+  }
+
+  /* ── Glow dot (live indicator) ── */
+  .dot-live {
+    @apply relative inline-block w-1.5 h-1.5 rounded-full bg-up;
+  }
+  .dot-live::after {
+    content: '';
+    @apply absolute inset-0 rounded-full bg-up animate-ping;
+  }
+
+  /* ── Volt accent dot ── */
   .q-dot {
     @apply inline-block w-1.5 h-1.5 rounded-full bg-volt;
   }
 
-  /* Reusable focus ring */
-  .ring-focus {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt
-      focus-visible:ring-offset-2 focus-visible:ring-offset-canvas;
+  /* ── Shimmer skeleton ── */
+  .skeleton {
+    @apply relative overflow-hidden bg-canvas-raised rounded-xl;
   }
-
-  /* Marquee/shimmer overlay for skeletons */
-  .shimmer-overlay {
-    position: relative;
-    overflow: hidden;
-  }
-  .shimmer-overlay::after {
+  .skeleton::after {
     content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.04),
-      transparent
-    );
-    animation: shimmer 2.4s linear infinite;
+    @apply absolute inset-0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+    animation: shimmer 2s linear infinite;
+  }
+
+  /* ── Sparkline container ── */
+  .sparkline {
+    @apply inline-flex items-end h-6 gap-[1px];
+  }
+
+  /* ── Probability bar ── */
+  .prob-track {
+    @apply relative h-1.5 rounded-full overflow-hidden;
+    background: rgba(255,255,255,0.04);
+  }
+
+  .prob-fill-yes {
+    @apply absolute inset-y-0 left-0 rounded-full;
+    background: linear-gradient(90deg, #CAFF3C, #9BCC1F);
+    transition: width 1s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .prob-fill-no {
+    @apply absolute inset-y-0 right-0 rounded-full;
+    background: linear-gradient(270deg, #EF4444, #DC2626);
+    transition: width 1s cubic-bezier(0.22, 1, 0.36, 1);
   }
 }
 
-/* Subtle grain — applied via fixed full-screen overlay in <Grain /> */
+/* ── Grain overlay ── */
 .grain-noise {
-  background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.16 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-  background-size: 240px 240px;
+  background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.08 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 200px 200px;
   mix-blend-mode: overlay;
-  opacity: 0.45;
-}
-
-/* The animated probability bar fills */
-.bar-track {
-  position: relative;
-  height: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.bar-fill-yes {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, #d9ff3c, #a6cc1f);
-  transform-origin: left;
-  border-radius: 999px;
-  transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.bar-fill-no {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, #ff5c5c, #d43a3a);
-  transform-origin: right;
-  border-radius: 999px;
+  opacity: 0.5;
 }

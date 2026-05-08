@@ -17,7 +17,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-canvas-sunken/80 backdrop-blur-md',
+      'fixed inset-0 z-50 bg-black/70 backdrop-blur-sm',
       'data-[state=open]:animate-fade-in data-[state=closed]:opacity-0',
       className,
     )}
@@ -32,15 +32,14 @@ const DialogContent = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
-    {/* Flex wrapper ensures the dialog stays within the viewport */}
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
           'pointer-events-auto relative',
-          'w-[92vw] max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto',
-          'rounded-3xl border border-line bg-canvas-raised',
-          'shadow-2xl shadow-black/50',
+          'w-[94vw] max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto',
+          'rounded-3xl border border-line bg-canvas-elevated',
+          'shadow-elevated',
           'data-[state=open]:animate-fade-up',
           'p-8',
           className,
@@ -49,16 +48,16 @@ const DialogContent = React.forwardRef<
       >
         {children}
         <DialogPrimitive.Close
-        className={cn(
-          'absolute right-5 top-5 rounded-full p-2',
-          'text-ink-dim hover:text-ink hover:bg-line transition-colors',
-          'ring-focus',
-        )}
-      >
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </DialogPrimitive.Close>
-    </DialogPrimitive.Content>
+          className={cn(
+            'absolute right-4 top-4 rounded-full p-2',
+            'text-ink-muted hover:text-ink hover:bg-canvas-raised transition-colors',
+            'ring-focus',
+          )}
+        >
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </DialogPrimitive.Close>
+      </DialogPrimitive.Content>
     </div>
   </DialogPortal>
 ));
@@ -82,19 +81,13 @@ const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn('text-ink-dim text-sm mt-2', className)}
+    className={cn('text-ink-muted text-sm mt-2', className)}
     {...props}
   />
 ));
 DialogDescription.displayName = DialogPrimitive.Description.displayName;
 
 export {
-  Dialog,
-  DialogTrigger,
-  DialogPortal,
-  DialogOverlay,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-  DialogClose,
+  Dialog, DialogTrigger, DialogPortal, DialogOverlay,
+  DialogContent, DialogTitle, DialogDescription, DialogClose,
 };
