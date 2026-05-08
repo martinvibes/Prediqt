@@ -9,6 +9,7 @@ import {PredqCredit} from "./PredqCredit.sol";
 contract MarketFactory {
     PredqCredit public immutable credit;
     RoomRegistry public immutable rooms;
+    address public immutable oracle;
     address public immutable owner;
 
     uint256 public nextMarketId = 1;
@@ -36,17 +37,18 @@ contract MarketFactory {
         address indexed creator
     );
 
-    constructor(address _credit, address _rooms) {
+    constructor(address _credit, address _rooms, address _oracle) {
+        require(_oracle != address(0), "oracle required");
         credit = PredqCredit(_credit);
         rooms = RoomRegistry(_rooms);
+        oracle = _oracle;
         owner = msg.sender;
     }
 
     function createMarket(
         uint256 roomId,
         string calldata question,
-        uint64 resolveAt,
-        address resolver
+        uint64 resolveAt
     ) external returns (uint256 marketId, address marketAddr) {
         require(rooms.isMember(roomId, msg.sender), "not a room member");
         require(bytes(question).length > 0 && bytes(question).length <= 280, "question 1-280 chars");
@@ -58,7 +60,7 @@ contract MarketFactory {
             marketId,
             roomId,
             address(credit),
-            resolver == address(0) ? msg.sender : resolver,
+            oracle,
             resolveAt
         );
         marketAddr = address(m);

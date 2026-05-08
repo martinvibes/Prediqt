@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { Contract, JsonRpcProvider } from 'ethers';
 import { useAuth } from './use-auth';
 import { getContract, getContractAddress } from '@/lib/contracts';
@@ -181,7 +181,6 @@ export function useCreateMarket() {
         // Explicit limit avoids estimation failures with Web3Auth wallets.
         const tx = await factory.createMarket(
           roomId, question, BigInt(resolveAt),
-          '0x0000000000000000000000000000000000000000',
           { gasLimit: 2_000_000 },
         );
         toast({ title: 'Creating market…', description: 'Deploying contract on Sepolia. This takes ~15s.' });
@@ -221,7 +220,8 @@ export function usePlaceBet() {
       setBusy(true);
       try {
         const mc = getMarketContract(marketAddress, signer);
-        const tx = await mc.bet(betYes, amount, { gasLimit: 800_000 });
+        // FHE _move during bet is gas-heavy on real Sepolia.
+        const tx = await mc.bet(betYes, amount, { gasLimit: 1_500_000 });
         const side = betYes ? 'YES' : 'NO';
         const display = `${Number(amount) / 1_000_000} PREDQ`;
         toast({ title: `Betting ${side}…`, description: display });
@@ -251,8 +251,10 @@ export function useResolveMarket() {
       if (!signer) throw new Error('Sign in first');
       setBusy(true);
       try {
-        const mc = getMarketContract(marketAddress, signer);
-        const tx = await mc.submitResolution(outcome);
+        // Resolution is pushed by the ResolutionOracle, not the market directly.
+        // Only the oracle's owner can call this (gated on-chain).
+        const oracle = getContract('ResolutionOracle', signer);
+        const tx = await oracle.resolve(marketAddress, outcome, { gasLimit: 200_000 });
         toast({ title: 'Resolving…', description: `Outcome: ${outcome ? 'YES' : 'NO'}` });
         const receipt = await tx.wait();
         toast({ title: 'Market resolved', description: outcome ? 'YES wins' : 'NO wins', variant: 'success' });
@@ -266,6 +268,30 @@ export function useResolveMarket() {
   return { resolve, busy };
 }
 
+/** Returns the oracle's current owner — the only address allowed to resolve markets. */
+let _cachedOracleOwner: string | null = null;
+export function useOracleOwner() {
+  const [owner, setOwner] = useState<string | null>(_cachedOracleOwner);
+  const fetched = useRef(false);
+
+  useEffect(() => {
+    if (_cachedOracleOwner || fetched.current) return;
+    fetched.current = true;
+    (async () => {
+      try {
+        const oracle = getContract('ResolutionOracle', readProvider());
+        const o: string = await oracle.owner();
+        _cachedOracleOwner = o;
+        setOwner(o);
+      } catch (e) {
+        console.error('[useOracleOwner]', e);
+      }
+    })();
+  }, []);
+
+  return owner;
+}
+
 export function useClaimPayout() {
   const { signer } = useAuth();
   const [busy, setBusy] = useState(false);
@@ -275,7 +301,9 @@ export function useClaimPayout() {
       setBusy(true);
       try {
         const mc = getMarketContract(marketAddress, signer);
-        const tx = await mc.claimPayout();
+        // FHE _move inside the credit contract is gas-heavy on Sepolia (~340k).
+        // Web3Auth wallets often estimate too low — set explicitly.
+        const tx = await mc.claimPayout({ gasLimit: 1_500_000 });
         toast({ title: 'Claiming payout…' });
         const receipt = await tx.wait();
         toast({ title: 'Payout claimed', variant: 'success' });

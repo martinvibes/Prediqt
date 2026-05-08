@@ -12,7 +12,7 @@ contract ForecastMarket {
     uint256 public immutable marketId;
     uint256 public immutable roomId;
     PredqCredit public immutable credit;
-    address public immutable resolver;
+    address public immutable oracle;
     uint64 public immutable resolveAt;
     uint64 public immutable createdAt;
 
@@ -46,13 +46,14 @@ contract ForecastMarket {
         uint256 _marketId,
         uint256 _roomId,
         address _credit,
-        address _resolver,
+        address _oracle,
         uint64 _resolveAt
     ) {
+        require(_oracle != address(0), "oracle required");
         marketId = _marketId;
         roomId = _roomId;
         credit = PredqCredit(_credit);
-        resolver = _resolver;
+        oracle = _oracle;
         resolveAt = _resolveAt;
         createdAt = uint64(block.timestamp);
 
@@ -102,7 +103,7 @@ contract ForecastMarket {
     // ───────────────────────── RESOLUTION ─────────────────────────
 
     function submitResolution(bool _outcome) external {
-        require(msg.sender == resolver, "not resolver");
+        require(msg.sender == oracle, "not oracle");
         require(status == Status.Open, "not open");
 
         status = Status.Resolved;

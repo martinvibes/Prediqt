@@ -11,7 +11,7 @@
     "node:local": "hardhat node",
     "deploy:local": "hardhat run scripts/deploy-week1.ts --network localhost",
     "deploy:sepolia": "hardhat run scripts/deploy-week1.ts --network sepolia",
-    "deploy:week2:sepolia": "hardhat run scripts/deploy-week2.ts --network sepolia",
+    "deploy:week3:sepolia": "hardhat run scripts/deploy-week3.ts --network sepolia",
     "deploy:full:sepolia": "hardhat run scripts/deploy-full.ts --network sepolia",
     "verify:sepolia": "hardhat verify --network sepolia",
     "lint": "solhint 'contracts/**/*.sol'"

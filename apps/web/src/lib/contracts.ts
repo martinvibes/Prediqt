@@ -3,7 +3,7 @@
 import { Contract, JsonRpcSigner, BrowserProvider, type Provider } from 'ethers';
 import { ABIS, getDeployment, SUPPORTED_CHAINS, type DeploymentRecord } from '@prediqt/shared';
 
-export type ContractName = 'PredqCredit' | 'RoomRegistry' | 'MarketFactory' | 'ForecastMarket';
+export type ContractName = 'PredqCredit' | 'RoomRegistry' | 'MarketFactory' | 'ForecastMarket' | 'ResolutionOracle';
 
 export function getActiveChainKey(): 'sepolia' | 'localhost' {
   return (process.env.NEXT_PUBLIC_CHAIN as 'sepolia' | 'localhost') ?? 'sepolia';

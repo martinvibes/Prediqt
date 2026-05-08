@@ -16,7 +16,7 @@ import { EncryptedReveal } from '@/components/encrypted-reveal';
 import { QMark } from '@/components/q-mark';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/confirm-dialog';
-import { useMarket, usePlaceBet, useResolveMarket, useClaimPayout, type MarketInfo } from '@/hooks/use-markets';
+import { useMarket, usePlaceBet, useResolveMarket, useClaimPayout, useOracleOwner, type MarketInfo } from '@/hooks/use-markets';
 import { useAuth } from '@/hooks/use-auth';
 import { relativeTime, formatPredq, shortAddr, cn } from '@/lib/utils';
 
@@ -36,6 +36,7 @@ function MarketContent({ address }: { address: string }) {
   const { placeBet, busy: betBusy } = usePlaceBet();
   const { resolve, busy: resolveBusy } = useResolveMarket();
   const { claim, busy: claimBusy } = useClaimPayout();
+  const oracleOwner = useOracleOwner();
   const [amount, setAmount] = useState('');
   const [side, setSide] = useState<'yes' | 'no' | null>(null);
   const [showResolve, setShowResolve] = useState(false);
@@ -46,7 +47,7 @@ function MarketContent({ address }: { address: string }) {
   if (!market) return <div className="flex-1 flex items-center justify-center"><QMark size={40} className="opacity-30" /></div>;
 
   const isOpen = market.status === 0;
-  const isResolver = userAddr && userAddr.toLowerCase() === market.creator.toLowerCase();
+  const isResolver = !!(userAddr && oracleOwner && userAddr.toLowerCase() === oracleOwner.toLowerCase());
   const amountPredq = parseFloat(amount) || 0;
   const amountRaw = BigInt(Math.floor(amountPredq * 1_000_000));
   const canBet = isOpen && side && amountPredq >= 1 && !betBusy;

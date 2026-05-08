@@ -18,7 +18,7 @@
       },
       {
         "internalType": "address",
-        "name": "_resolver",
+        "name": "_oracle",
         "type": "address"
       },
       {
@@ -300,6 +300,19 @@
   },
   {
     "inputs": [],
+    "name": "oracle",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "outcome",
     "outputs": [
       {
@@ -332,19 +345,6 @@
         "internalType": "uint64",
         "name": "",
         "type": "uint64"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "resolver",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
       }
     ],
     "stateMutability": "view",

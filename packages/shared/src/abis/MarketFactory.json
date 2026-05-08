@@ -10,6 +10,11 @@
         "internalType": "address",
         "name": "_rooms",
         "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_oracle",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -87,11 +92,6 @@
         "internalType": "uint64",
         "name": "resolveAt",
         "type": "uint64"
-      },
-      {
-        "internalType": "address",
-        "name": "resolver",
-        "type": "address"
       }
     ],
     "name": "createMarket",
@@ -339,6 +339,19 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "oracle",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",

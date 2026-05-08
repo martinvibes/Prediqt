@@ -23,6 +23,8 @@ export interface DeploymentRecord {
   contracts: {
     PredqCredit?: Address;
     RoomRegistry?: Address;
+    MarketFactory?: Address;
+    ResolutionOracle?: Address;
     [key: string]: Address | undefined;
   };
 }

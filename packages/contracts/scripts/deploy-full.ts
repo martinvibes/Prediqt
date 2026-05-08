@@ -10,7 +10,7 @@ async function main() {
   const balance = await ethers.provider.getBalance(deployer.address);
 
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(`  Prediqt — Full Deploy (Week 1 + 2)`);
+  console.log(`  Prediqt — Full Deploy (Week 1 + 2 + 3)`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(`  Network:     ${network.name} (chainId ${chainId})`);
   console.log(`  Deployer:    ${deployer.address}`);
@@ -33,21 +33,29 @@ async function main() {
   const roomsAddr = await rooms.getAddress();
   console.log(`   RoomRegistry:   ${roomsAddr}`);
 
-  // 3. MarketFactory
+  // 3. ResolutionOracle
+  console.log('→ Deploying ResolutionOracle...');
+  const Oracle = await ethers.getContractFactory('ResolutionOracle');
+  const oracle = await Oracle.deploy(deployer.address);
+  await oracle.waitForDeployment();
+  const oracleAddr = await oracle.getAddress();
+  console.log(`   ResolutionOracle: ${oracleAddr}`);
+
+  // 4. MarketFactory
   console.log('→ Deploying MarketFactory...');
   const MarketFactory = await ethers.getContractFactory('MarketFactory');
-  const factory = await MarketFactory.deploy(creditAddr, roomsAddr);
+  const factory = await MarketFactory.deploy(creditAddr, roomsAddr, oracleAddr);
   await factory.waitForDeployment();
   const factoryAddr = await factory.getAddress();
   console.log(`   MarketFactory:  ${factoryAddr}`);
 
-  // 4. Wire: set factory on PredqCredit
+  // 5. Wire: set factory on PredqCredit
   console.log('→ Setting factory on PredqCredit...');
   const tx = await credit.setFactory(factoryAddr);
   await tx.wait();
   console.log('   ✓ Factory authorized\n');
 
-  // 5. Persist
+  // 6. Persist
   const record = {
     chainId,
     network: network.name,
@@ -55,6 +63,7 @@ async function main() {
     contracts: {
       PredqCredit: creditAddr,
       RoomRegistry: roomsAddr,
+      ResolutionOracle: oracleAddr,
       MarketFactory: factoryAddr,
     },
   };
@@ -68,6 +77,7 @@ async function main() {
     console.log('\n→ Etherscan:');
     console.log(`   https://sepolia.etherscan.io/address/${creditAddr}`);
     console.log(`   https://sepolia.etherscan.io/address/${roomsAddr}`);
+    console.log(`   https://sepolia.etherscan.io/address/${oracleAddr}`);
     console.log(`   https://sepolia.etherscan.io/address/${factoryAddr}`);
   }
 }

@@ -11,6 +11,7 @@
     "contracts:node": "pnpm --filter @prediqt/contracts node:local",
     "contracts:deploy:local": "pnpm --filter @prediqt/contracts deploy:local",
     "contracts:deploy:sepolia": "pnpm --filter @prediqt/contracts deploy:sepolia",
+    "contracts:deploy:week3:sepolia": "pnpm --filter @prediqt/contracts deploy:week3:sepolia",
     "shared:build": "pnpm --filter @prediqt/shared build",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,sol,md,json}\"",
     "lint": "pnpm -r lint"
