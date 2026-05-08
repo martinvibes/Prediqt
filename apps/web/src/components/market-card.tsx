@@ -6,6 +6,7 @@ import { Clock, Users, TrendingUp, TrendingDown, CheckCircle2, XCircle } from 'l
 import { Sparkline } from './sparkline';
 import { relativeTime, formatPredq, cn } from '@/lib/utils';
 import type { MarketInfo } from '@/hooks/use-markets';
+import { AgentBadgeStrip, useAgentPositions } from './agent-positions';
 
 /**
  * Premium market card — feels like a mini financial asset.
@@ -26,6 +27,7 @@ export function MarketCard({
   const wonNo = !isOpen && !market.outcome;
   const resolveLabel = relativeTime(market.resolveAt);
   const pool = formatPredq(market.totalDeposited, { compact: true });
+  const { positions } = useAgentPositions(market.marketAddress);
 
   return (
     <motion.div
@@ -134,25 +136,28 @@ export function MarketCard({
           </div>
 
           {/* Row 2: Meta stats */}
-          <div className="flex items-center gap-3 text-ink-muted">
-            <span className="label flex items-center gap-1">
-              <Users className="h-3 w-3" />
-              {market.totalBettors}
-            </span>
-            <span className="label">·</span>
-            <span className="label">{pool} predq</span>
-            {!compact && (
-              <>
-                <span className="label">·</span>
-                <span className={cn(
-                  'label flex items-center gap-0.5',
-                  isUp ? 'text-up' : 'text-down',
-                )}>
-                  {isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                  {isUp ? 'yes leads' : 'no leads'}
-                </span>
-              </>
-            )}
+          <div className="flex items-center justify-between gap-3 text-ink-muted">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="label flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                {market.totalBettors}
+              </span>
+              <span className="label">·</span>
+              <span className="label">{pool} predq</span>
+              {!compact && (
+                <>
+                  <span className="label">·</span>
+                  <span className={cn(
+                    'label flex items-center gap-0.5',
+                    isUp ? 'text-up' : 'text-down',
+                  )}>
+                    {isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    {isUp ? 'yes leads' : 'no leads'}
+                  </span>
+                </>
+              )}
+            </div>
+            <AgentBadgeStrip positions={positions} />
           </div>
         </div>
       </Link>

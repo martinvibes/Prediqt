@@ -34,6 +34,7 @@ pnpm-debug.log*
 .idea
 *.swp
 .DS_Store
+.claude
 
 # misc
 *.tsbuildinfo
@@ -41,3 +42,6 @@ pnpm-debug.log*
 
 # generated agent wallets (private keys — never commit)
 .agents.json
+
+# agent activity log (gitignored — server-side runtime state)
+.agent-activity.json

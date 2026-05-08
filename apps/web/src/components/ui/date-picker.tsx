@@ -4,9 +4,124 @@ import * as React from 'react';
 import { DayPicker } from 'react-day-picker';
 import { format, setHours, setMinutes, addHours, addDays, addMonths, subMonths } from 'date-fns';
 import * as Popover from '@radix-ui/react-popover';
-import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './button';
+
+/**
+ * Tiny scrollable dropdown — used for hour / minute / year pickers inside the
+ * date picker. Native `<select>` is unconstrained on macOS; this gives us a
+ * fixed `max-h` with overflow scroll.
+ */
+function ScrollSelect<T extends string | number>({
+  value,
+  options,
+  onChange,
+  format: fmt,
+  width = 'auto',
+  align = 'center',
+  ariaLabel,
+}: {
+  value: T;
+  options: T[];
+  onChange: (v: T) => void;
+  format?: (v: T) => string;
+  width?: string;
+  align?: 'start' | 'center' | 'end';
+  ariaLabel: string;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const listRef = React.useRef<HTMLDivElement>(null);
+  const display = fmt ? fmt(value) : String(value);
+
+  // Scroll the selected item into view when the popover opens.
+  React.useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => {
+      const el = listRef.current?.querySelector<HTMLButtonElement>('[data-selected="true"]');
+      el?.scrollIntoView({ block: 'center' });
+    }, 0);
+    return () => clearTimeout(t);
+  }, [open]);
+
+  return (
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger asChild>
+        <button
+          type="button"
+          aria-label={ariaLabel}
+          style={{ minWidth: width }}
+          className={cn(
+            'rounded px-1.5 py-0.5 font-mono text-[12px] tabular text-white',
+            'cursor-pointer focus:outline-none hover:bg-[#2a2a30] transition-colors',
+            'flex items-center justify-center',
+          )}
+        >
+          {display}
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          align={align}
+          sideOffset={6}
+          className={cn(
+            'z-[80] rounded-lg border border-[rgba(255,255,255,0.10)]',
+            'bg-[#1B1B22] shadow-[0_18px_60px_-12px_rgba(0,0,0,0.95)]',
+            'data-[state=open]:animate-fade-up p-1',
+          )}
+        >
+          <div
+            ref={listRef}
+            className="max-h-[200px] overflow-y-auto overscroll-contain"
+            onWheel={(e) => {
+              // Nested-popover gotcha: the outer date-picker Popover swallows
+              // wheel events. Manually drive scrollTop so the user's wheel
+              // actually moves the list.
+              e.stopPropagation();
+              e.currentTarget.scrollTop += e.deltaY;
+            }}
+          >
+            {options.map((opt) => {
+              const selected = opt === value;
+              const label = fmt ? fmt(opt) : String(opt);
+              return (
+                <button
+                  key={String(opt)}
+                  type="button"
+                  data-selected={selected || undefined}
+                  onClick={() => { onChange(opt); setOpen(false); }}
+                  className={cn(
+                    'flex items-center justify-between w-full px-2.5 py-1.5 rounded-md',
+                    'font-mono text-[12px] tabular text-left',
+                    'transition-colors duration-100',
+                    selected
+                      ? 'bg-volt/15 text-volt'
+                      : 'text-[#bbb] hover:bg-[#28282F] hover:text-white',
+                  )}
+                >
+                  <span>{label}</span>
+                  {selected && <Check className="h-3 w-3 ml-3" />}
+                </button>
+              );
+            })}
+          </div>
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
+const MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+/** 5 years back, current, 10 years forward — adjustable. */
+function yearOptions(centerYear: number): number[] {
+  const out: number[] = [];
+  for (let y = centerYear - 5; y <= centerYear + 10; y++) out.push(y);
+  return out;
+}
 
 interface DateTimePickerProps {
   value: Date | null;
@@ -118,23 +233,45 @@ export function DateTimePicker({
             ))}
           </div>
 
-          {/* Month header — prev | title | next on a single row */}
-          <div className="px-3 pt-2 pb-1 flex items-center justify-between border-t border-[rgba(255,255,255,0.06)]">
+          {/* Month header — prev | month-select + year-select | next */}
+          <div className="px-3 pt-2 pb-1 flex items-center justify-between gap-1 border-t border-[rgba(255,255,255,0.06)]">
             <button
               type="button"
               onClick={() => setMonth(subMonths(month, 1))}
-              className="h-7 w-7 rounded-md flex items-center justify-center text-[#888] hover:text-white hover:bg-[#2a2a30] transition-colors"
+              className="h-7 w-7 rounded-md flex items-center justify-center text-[#888] hover:text-white hover:bg-[#2a2a30] transition-colors shrink-0"
               aria-label="Previous month"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
-            <div className="font-sans text-[13px] font-medium text-white">
-              {format(month, 'MMMM yyyy')}
+            <div className="flex items-center gap-0.5 bg-[#28282F] rounded-md p-0.5">
+              <ScrollSelect
+                ariaLabel="Month"
+                value={month.getMonth()}
+                options={Array.from({ length: 12 }, (_, i) => i)}
+                format={(i) => MONTHS[i]}
+                onChange={(i) => {
+                  const next = new Date(month);
+                  next.setMonth(i);
+                  setMonth(next);
+                }}
+                width="44px"
+              />
+              <ScrollSelect
+                ariaLabel="Year"
+                value={month.getFullYear()}
+                options={yearOptions(month.getFullYear())}
+                onChange={(y) => {
+                  const next = new Date(month);
+                  next.setFullYear(y);
+                  setMonth(next);
+                }}
+                width="44px"
+              />
             </div>
             <button
               type="button"
               onClick={() => setMonth(addMonths(month, 1))}
-              className="h-7 w-7 rounded-md flex items-center justify-center text-[#888] hover:text-white hover:bg-[#2a2a30] transition-colors"
+              className="h-7 w-7 rounded-md flex items-center justify-center text-[#888] hover:text-white hover:bg-[#2a2a30] transition-colors shrink-0"
               aria-label="Next month"
             >
               <ChevronRight className="h-3.5 w-3.5" />
@@ -179,30 +316,24 @@ export function DateTimePicker({
 
           {/* Time + Done */}
           <div className="px-3 py-2.5 border-t border-[rgba(255,255,255,0.06)] bg-[#16161B] flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1 bg-[#28282F] rounded-md p-0.5">
-              <select
+            <div className="flex items-center gap-0.5 bg-[#28282F] rounded-md p-0.5">
+              <ScrollSelect
+                ariaLabel="Hour"
                 value={hours}
-                onChange={(e) => handleTimeChange(Number(e.target.value), mins)}
-                className="bg-transparent rounded px-1.5 py-1 font-mono text-xs tabular text-white appearance-none cursor-pointer focus:outline-none hover:bg-[#2a2a30] transition-colors"
-              >
-                {Array.from({ length: 24 }, (_, i) => (
-                  <option key={i} value={i} className="bg-[#18181C]">
-                    {i.toString().padStart(2, '0')}
-                  </option>
-                ))}
-              </select>
+                options={Array.from({ length: 24 }, (_, i) => i)}
+                format={(i) => i.toString().padStart(2, '0')}
+                onChange={(h) => handleTimeChange(h, mins)}
+                width="28px"
+              />
               <span className="text-[#555] font-mono text-xs">:</span>
-              <select
+              <ScrollSelect
+                ariaLabel="Minute"
                 value={mins}
-                onChange={(e) => handleTimeChange(hours, Number(e.target.value))}
-                className="bg-transparent rounded px-1.5 py-1 font-mono text-xs tabular text-white appearance-none cursor-pointer focus:outline-none hover:bg-[#2a2a30] transition-colors"
-              >
-                {[0, 15, 30, 45].map((m) => (
-                  <option key={m} value={m} className="bg-[#18181C]">
-                    {m.toString().padStart(2, '0')}
-                  </option>
-                ))}
-              </select>
+                options={Array.from({ length: 60 }, (_, m) => m)}
+                format={(i) => i.toString().padStart(2, '0')}
+                onChange={(m) => handleTimeChange(hours, m)}
+                width="28px"
+              />
             </div>
 
             <span className="flex-1 font-mono text-[10px] uppercase tracking-wider text-[#666] truncate text-right">

@@ -4,27 +4,36 @@ import { Nav } from '@/components/nav';
 import { Footer } from '@/components/footer';
 import { AgentsClient } from './agents-client';
 import { getServerProvider, getAddress, getDeployerWallet } from '@/lib/server-contracts';
+import { getAgentStats, getRecentActivity, type ActivityRecord } from '@/lib/agent-activity';
+import { ensureBackfilled } from '@/lib/agent-backfill';
 
 export const dynamic = 'force-dynamic';
 
-interface AgentRow {
+export interface AgentRow {
   id: string;
   name: string;
   persona: string;
   wallet: string;
   active: boolean;
   hasKey: boolean;
+  totalBets: number;
+  totalWagered: number;
+  lastBet: number | null;
 }
 
-interface Status {
+export interface AgentsStatus {
   agents: AgentRow[];
   oracleOwner: string;
   agentOperator: string;
   operatorIsOracleOwner: boolean;
   openAiConfigured: boolean;
+  recent: ActivityRecord[];
 }
 
-async function fetchStatus(): Promise<Status> {
+async function fetchStatus(): Promise<AgentsStatus> {
+  // Reconcile on-chain BetPlaced events into the activity log on first load.
+  await ensureBackfilled();
+
   const provider = getServerProvider();
   const registry = new Contract(getAddress('AgentRegistry'), ABIS.AgentRegistry as any, provider);
   const oracle = new Contract(getAddress('ResolutionOracle'), ABIS.ResolutionOracle as any, provider);
@@ -33,6 +42,7 @@ async function fetchStatus(): Promise<Status> {
   const agents: AgentRow[] = [];
   for (const id of ids) {
     const a = await registry.getAgent(id);
+    const stats = getAgentStats(a.name);
     agents.push({
       id: a.id.toString(),
       name: a.name,
@@ -40,6 +50,9 @@ async function fetchStatus(): Promise<Status> {
       wallet: a.wallet,
       active: a.active,
       hasKey: !!process.env[`AGENT_KEY_${a.name.toUpperCase()}`],
+      totalBets: stats.totalBets,
+      totalWagered: stats.totalWagered,
+      lastBet: stats.lastBet,
     });
   }
 
@@ -53,27 +66,16 @@ async function fetchStatus(): Promise<Status> {
     agentOperator: operator,
     operatorIsOracleOwner: operator !== '' && oracleOwner.toLowerCase() === operator.toLowerCase(),
     openAiConfigured: !!process.env.OPENAI_API_KEY,
+    recent: getRecentActivity(40),
   };
 }
 
 export default async function AgentsPage() {
   const status = await fetchStatus();
-
   return (
     <main className="relative min-h-screen flex flex-col">
       <Nav />
-      <section className="flex-1 px-6 pt-16 pb-24">
-        <div className="mx-auto max-w-[1100px]">
-          <h1 className="heading-display text-mega mb-3">AI agents</h1>
-          <p className="text-ink-dim text-base md:text-lg leading-relaxed mb-10 max-w-[680px]">
-            Three traders that read every open market and decide whether to bet.
-            They live on Sepolia, hold real PREDQ, and lose it when wrong — same
-            as you.
-          </p>
-
-          <AgentsClient status={status} />
-        </div>
-      </section>
+      <AgentsClient status={status} />
       <Footer />
     </main>
   );

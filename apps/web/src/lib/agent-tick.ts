@@ -9,6 +9,7 @@ import {
   readContract,
 } from './server-contracts';
 import { decideBet, resolveOutcome, type MarketContext } from './agent-llm';
+import { appendRecords, type ActivityRecord } from './agent-activity';
 
 export interface TickReport {
   resolved: { market: string; question: string; outcome: 'yes' | 'no' }[];
@@ -33,6 +34,7 @@ export interface TickReport {
  */
 export async function runAgentTick(): Promise<TickReport> {
   const t0 = Date.now();
+  const activityRecords: ActivityRecord[] = [];
 
   const factory = readContract('MarketFactory');
   const oracle = readContract('ResolutionOracle');
@@ -104,6 +106,14 @@ export async function runAgentTick(): Promise<TickReport> {
           market: e.meta.market,
           question: e.meta.question,
           outcome: verdict,
+        });
+        activityRecords.push({
+          kind: 'resolve',
+          marketAddress: e.meta.market,
+          question: e.meta.question,
+          outcome: verdict,
+          reason: 'AI verdict',
+          timestamp: Date.now(),
         });
       }
       if (markets.length > 0) {
@@ -206,6 +216,10 @@ export async function runAgentTick(): Promise<TickReport> {
         });
       }
     }
+  }
+
+  if (activityRecords.length > 0) {
+    appendRecords(activityRecords);
   }
 
   report.ms = Date.now() - t0;

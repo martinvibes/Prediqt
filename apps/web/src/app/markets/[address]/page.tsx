@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Clock, TrendingUp, TrendingDown, Gavel, Gift, ArrowUpRight } from 'lucide-react';
+import { ArrowLeft, Clock, TrendingUp, TrendingDown, Gavel, Gift, ArrowUpRight, Sparkles, Zap } from 'lucide-react';
 
 import { Nav } from '@/components/nav';
 import { Footer } from '@/components/footer';
@@ -16,6 +16,7 @@ import { EncryptedReveal } from '@/components/encrypted-reveal';
 import { QMark } from '@/components/q-mark';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { AgentPositionsPanel } from '@/components/agent-positions';
 import { useMarket, usePlaceBet, useResolveMarket, useClaimPayout, useOracleOwner, type MarketInfo } from '@/hooks/use-markets';
 import { useAuth } from '@/hooks/use-auth';
 import { relativeTime, formatPredq, shortAddr, cn } from '@/lib/utils';
@@ -59,6 +60,12 @@ function MarketContent({ address }: { address: string }) {
   const est = side && amountPredq >= 1 ? estimateReturn(market, side === 'yes', amountPredq) : null;
   const isUp = market.yesPrice >= 50;
 
+  // Resolution gating: only show resolver controls *after* the deadline.
+  // Before that, the question is still under active speculation.
+  const nowSec = Math.floor(Date.now() / 1000);
+  const pastDeadline = nowSec >= Number(market.resolveAt);
+  const canResolveNow = isOpen && pastDeadline && isResolver;
+
   const handleBet = async () => {
     if (!canBet) return;
     setShowBetConfirm(false);
@@ -83,11 +90,6 @@ function MarketContent({ address }: { address: string }) {
             {isOpen ? <><span className="dot-live" /> live</> : <span className="text-ink-ghost">{market.outcome ? 'yes won' : 'no won'}</span>}
             <span className="text-ink-ghost">·</span>
             <Clock className="h-3 w-3" /> {isOpen ? relativeTime(market.resolveAt) : 'settled'}
-            {isResolver && isOpen && (
-              <button onClick={() => setShowResolve(true)} className="ml-2 text-volt hover:underline flex items-center gap-1">
-                <Gavel className="h-3 w-3" /> Resolve
-              </button>
-            )}
           </div>
           <h1 className="font-display text-stat tracking-crunch mb-5">{market.question}</h1>
           <div className="flex items-end justify-between gap-6 mb-4">
@@ -102,71 +104,222 @@ function MarketContent({ address }: { address: string }) {
           <ProbabilityBar yesPercent={market.yesPrice} size="lg" />
         </motion.div>
 
+        {/* Resolve banner — only when past deadline AND user is the resolver */}
+        {canResolveNow && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 rounded-2xl border-2 border-volt/40 bg-gradient-to-r from-volt/10 via-volt/5 to-transparent p-5 flex items-center justify-between gap-4 flex-wrap shadow-[0_0_40px_-12px_rgba(217,255,60,0.4)]"
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-volt/20 grid place-items-center text-volt">
+                <Gavel className="h-5 w-5" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="font-display text-lg tracking-crunch text-volt">
+                  Awaiting resolution
+                </div>
+                <div className="label text-ink-dim">
+                  This market closed for new bets. You're the resolver — pick the answer.
+                </div>
+              </div>
+            </div>
+            <Button size="lg" onClick={() => setShowResolve(true)}>
+              <Gavel className="h-4 w-4" /> Resolve now
+            </Button>
+          </motion.div>
+        )}
+
+        {/* Pre-deadline note for resolver */}
+        {isOpen && !pastDeadline && isResolver && (
+          <div className="mb-6 rounded-xl border border-line bg-canvas-raised px-4 py-3 flex items-center gap-2.5 text-ink-dim">
+            <Gavel className="h-3.5 w-3.5 text-ink-ghost" />
+            <span className="label">
+              You're the resolver. Resolution opens after the deadline ({relativeTime(market.resolveAt)}).
+            </span>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Bet Panel */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="lg:col-span-7">
             {isOpen ? (
-              <div className="surface p-6 space-y-5">
-                <div className="label">Place your bet</div>
-                <div className="grid grid-cols-2 gap-2">
-                  {(['yes', 'no'] as const).map((s) => {
-                    const active = side === s;
-                    const isYes = s === 'yes';
-                    return (
-                      <button key={s} onClick={() => setSide(s)}
-                        className={cn(
-                          'flex flex-col items-center justify-center h-20 rounded-xl border-2 transition-all duration-200',
-                          active ? isYes ? 'border-up bg-up-dim' : 'border-down bg-down-dim' : 'border-line hover:border-line-strong',
-                        )}>
-                        {isYes ? <TrendingUp className={cn('h-5 w-5 mb-1', active ? 'text-up' : 'text-ink-ghost')} /> : <TrendingDown className={cn('h-5 w-5 mb-1', active ? 'text-down' : 'text-ink-ghost')} />}
-                        <span className="font-mono text-sm uppercase tracking-[0.12em]">{s}</span>
-                        <span className="font-mono text-[11px] tabular text-ink-ghost">{(isYes ? market.yesPrice : 100 - market.yesPrice).toFixed(1)}%</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="label">Amount (PREDQ)</span>
-                    <div className="flex gap-1">
-                      {[10, 50, 100, 250].map((q) => (
-                        <button key={q} onClick={() => setAmount(q.toString())}
-                          className="px-2 py-0.5 rounded-md bg-canvas-raised border border-line label hover:border-volt/40 hover:text-volt transition-colors">
-                          {q}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <Input type="number" placeholder="0" min="1" step="1" value={amount} onChange={(e) => setAmount(e.target.value)}
-                    className="font-mono text-2xl tabular h-14" />
-                </div>
-
-                {est && (
-                  <div className={cn('rounded-xl p-4 space-y-1',
-                    side === 'yes' ? 'bg-up-dim border border-up/20' : 'bg-down-dim border border-down/20',
-                  )}>
-                    <div className={cn('label flex items-center gap-1', side === 'yes' ? 'text-up' : 'text-down')}>
-                      <Gift className="h-3 w-3" /> If {side} wins
-                    </div>
-                    <div className="flex items-baseline gap-3">
-                      <span className={cn('font-mono text-2xl tabular font-semibold', side === 'yes' ? 'text-up' : 'text-down')}>
-                        {est.payout.toFixed(1)} PREDQ
-                      </span>
-                      <span className={cn('font-mono text-sm tabular', est.multiplier >= 1.5 ? (side === 'yes' ? 'text-up' : 'text-down') : 'text-ink-muted')}>
-                        {est.multiplier.toFixed(2)}x
-                      </span>
-                    </div>
-                    <div className="label text-ink-ghost">
-                      +{est.profit.toFixed(1)} profit · {est.shares.toFixed(1)} shares
-                    </div>
-                  </div>
+              <div
+                className={cn(
+                  'relative rounded-3xl border-2 overflow-hidden',
+                  'transition-all duration-300',
+                  side === 'yes' && 'border-up/40 shadow-[0_0_60px_-20px_rgba(0,255,127,0.3)]',
+                  side === 'no' && 'border-down/40 shadow-[0_0_60px_-20px_rgba(255,92,92,0.3)]',
+                  !side && 'border-line bg-canvas-elevated',
                 )}
+                style={{
+                  background: side === 'yes'
+                    ? 'linear-gradient(180deg, rgba(0,255,127,0.04) 0%, rgba(0,0,0,0) 60%)'
+                    : side === 'no'
+                    ? 'linear-gradient(180deg, rgba(255,92,92,0.04) 0%, rgba(0,0,0,0) 60%)'
+                    : undefined,
+                }}
+              >
+                <div className="p-6 space-y-5 bg-canvas-elevated/40">
+                  {/* Section header — bolder */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-volt" />
+                      <span className="font-display text-lg tracking-crunch">Take a side</span>
+                    </div>
+                    <span className="label text-ink-ghost">
+                      pick · stake · win
+                    </span>
+                  </div>
 
-                <Button size="xl" className="w-full" variant={side === 'no' ? 'danger' : 'primary'}
-                  disabled={!canBet} onClick={() => setShowBetConfirm(true)}>
-                  {side ? `Bet ${side.toUpperCase()} · ${amountPredq || 0} PREDQ` : 'Select YES or NO'}
-                </Button>
+                  {/* Big YES / NO pickers — clearer with full labels */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {(['yes', 'no'] as const).map((s) => {
+                      const active = side === s;
+                      const isYes = s === 'yes';
+                      const price = isYes ? market.yesPrice : 100 - market.yesPrice;
+                      return (
+                        <motion.button
+                          key={s}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => setSide(s)}
+                          className={cn(
+                            'group relative flex flex-col items-start justify-between p-4 h-28 rounded-2xl border-2',
+                            'transition-all duration-200 overflow-hidden',
+                            active
+                              ? isYes
+                                ? 'border-up bg-up-dim shadow-[0_0_30px_-10px_rgba(0,255,127,0.5)]'
+                                : 'border-down bg-down-dim shadow-[0_0_30px_-10px_rgba(255,92,92,0.5)]'
+                              : 'border-line hover:border-line-strong bg-canvas-raised',
+                          )}
+                        >
+                          {/* Decorative arrow icon, top-right */}
+                          <div
+                            className={cn(
+                              'absolute top-3 right-3 h-6 w-6 rounded-lg grid place-items-center transition-all duration-200',
+                              active
+                                ? isYes ? 'bg-up text-canvas' : 'bg-down text-white'
+                                : 'bg-canvas border border-line text-ink-ghost group-hover:text-ink-dim',
+                            )}
+                          >
+                            {isYes
+                              ? <TrendingUp className="h-3.5 w-3.5" />
+                              : <TrendingDown className="h-3.5 w-3.5" />}
+                          </div>
+
+                          <span
+                            className={cn(
+                              'font-display text-3xl tracking-crunch font-semibold',
+                              active
+                                ? isYes ? 'text-up' : 'text-down'
+                                : 'text-ink-dim group-hover:text-ink',
+                            )}
+                          >
+                            {s.toUpperCase()}
+                          </span>
+
+                          <div className="flex flex-col items-start">
+                            <span className="label text-ink-ghost">implied probability</span>
+                            <span className={cn(
+                              'font-mono text-lg tabular tracking-tight',
+                              active ? isYes ? 'text-up' : 'text-down' : 'text-ink',
+                            )}>
+                              {price.toFixed(1)}%
+                            </span>
+                          </div>
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="label">How much (PREDQ)</span>
+                      <div className="flex gap-1.5">
+                        {[10, 50, 100, 250].map((q) => (
+                          <button
+                            key={q}
+                            onClick={() => setAmount(q.toString())}
+                            className={cn(
+                              'px-2.5 py-1 rounded-md font-mono text-[11px] tabular',
+                              'bg-canvas-raised border border-line text-ink-dim',
+                              'hover:border-volt/40 hover:text-volt transition-colors',
+                              amount === q.toString() && 'border-volt/60 text-volt bg-volt/5',
+                            )}
+                          >
+                            {q}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        min="1"
+                        step="1"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        className="font-mono text-3xl tabular h-16 pr-20 font-semibold"
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 font-mono text-sm text-ink-ghost tracking-wider">
+                        PREDQ
+                      </span>
+                    </div>
+                  </div>
+
+                  {est && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={cn(
+                        'rounded-2xl p-4 space-y-3 border',
+                        side === 'yes' ? 'bg-up-dim border-up/30' : 'bg-down-dim border-down/30',
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className={cn('label flex items-center gap-1.5 font-medium', side === 'yes' ? 'text-up' : 'text-down')}>
+                          <Sparkles className="h-3 w-3" /> If you're right
+                        </div>
+                        <span className={cn(
+                          'font-mono text-xs tabular px-2 py-0.5 rounded-md',
+                          est.multiplier >= 2
+                            ? (side === 'yes' ? 'bg-up text-canvas' : 'bg-down text-white')
+                            : 'bg-canvas border border-line',
+                        )}>
+                          {est.multiplier.toFixed(2)}×
+                        </span>
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className={cn(
+                          'font-mono text-3xl tabular font-bold tracking-tightest',
+                          side === 'yes' ? 'text-up' : 'text-down',
+                        )}>
+                          +{est.profit.toFixed(1)}
+                        </span>
+                        <span className="font-mono text-sm tabular text-ink-dim">
+                          PREDQ profit
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between label text-ink-ghost">
+                        <span>{est.payout.toFixed(1)} PREDQ payout</span>
+                        <span>{est.shares.toFixed(1)} shares</span>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  <Button
+                    size="xl"
+                    className="w-full"
+                    variant={side === 'no' ? 'danger' : 'primary'}
+                    disabled={!canBet}
+                    onClick={() => setShowBetConfirm(true)}
+                  >
+                    {side
+                      ? `Stake ${amountPredq || 0} on ${side.toUpperCase()}`
+                      : 'Pick YES or NO to continue'}
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="surface p-8 text-center space-y-5">
@@ -227,6 +380,7 @@ function MarketContent({ address }: { address: string }) {
                 {userNo > 0n && <div className="flex justify-between"><span className="label">no shares</span><span className="font-mono text-sm tabular text-down"><EncryptedReveal value={formatPredq(userNo, { compact: true })} duration={600} /></span></div>}
               </div>
             )}
+            <AgentPositionsPanel marketAddress={address} />
             <div className="surface p-5 space-y-2">
               <div className="label">Contract</div>
               <a href={`https://sepolia.etherscan.io/address/${address}`} target="_blank" rel="noreferrer"
@@ -239,18 +393,81 @@ function MarketContent({ address }: { address: string }) {
 
         {/* ── Resolve dialog ── */}
         <Dialog open={showResolve} onOpenChange={(o) => !o && setShowResolve(false)}>
-          <DialogContent className="max-w-sm">
-            <DialogTitle>Resolve market</DialogTitle>
-            <DialogDescription>Pick the outcome. This is final.</DialogDescription>
-            <p className="text-ink-muted text-sm my-4">{market.question}</p>
-            <div className="grid grid-cols-2 gap-2">
-              <Button size="lg" onClick={() => resolve(address, true).then(() => { setShowResolve(false); refresh(); })} loading={resolveBusy}>
-                <TrendingUp className="h-4 w-4" /> YES
-              </Button>
-              <Button size="lg" variant="danger" onClick={() => resolve(address, false).then(() => { setShowResolve(false); refresh(); })} loading={resolveBusy}>
-                <TrendingDown className="h-4 w-4" /> NO
-              </Button>
+          <DialogContent className="max-w-md">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 label text-volt">
+                <Gavel className="h-3 w-3" />
+                Resolution
+              </div>
+              <DialogTitle>Did this happen?</DialogTitle>
+              <DialogDescription>
+                Pick the answer that came true in the real world. This pays winners
+                and is final — there is no appeal.
+              </DialogDescription>
             </div>
+
+            <div className="my-5 rounded-2xl border border-line bg-canvas-raised p-4">
+              <div className="label-micro mb-1.5">The question</div>
+              <p className="font-display text-lg tracking-crunch text-ink leading-snug">
+                {market.question}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2.5">
+              <button
+                disabled={resolveBusy}
+                onClick={() => resolve(address, true).then(() => { setShowResolve(false); refresh(); })}
+                className={cn(
+                  'group flex items-center gap-3 p-4 rounded-2xl border-2',
+                  'border-up/30 hover:border-up bg-up-dim/40 hover:bg-up-dim',
+                  'transition-all duration-200 text-left',
+                  'disabled:opacity-50 disabled:cursor-not-allowed',
+                )}
+              >
+                <div className="h-10 w-10 rounded-xl bg-up text-canvas grid place-items-center shrink-0 font-display text-lg font-bold">
+                  Y
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-display text-lg tracking-crunch text-up leading-tight">
+                    Yes — it happened
+                  </div>
+                  <div className="label text-ink-muted mt-0.5 truncate">
+                    YES bettors win their share of the pool
+                  </div>
+                </div>
+                <TrendingUp className="h-5 w-5 text-up shrink-0" />
+              </button>
+
+              <button
+                disabled={resolveBusy}
+                onClick={() => resolve(address, false).then(() => { setShowResolve(false); refresh(); })}
+                className={cn(
+                  'group flex items-center gap-3 p-4 rounded-2xl border-2',
+                  'border-down/30 hover:border-down bg-down-dim/40 hover:bg-down-dim',
+                  'transition-all duration-200 text-left',
+                  'disabled:opacity-50 disabled:cursor-not-allowed',
+                )}
+              >
+                <div className="h-10 w-10 rounded-xl bg-down text-white grid place-items-center shrink-0 font-display text-lg font-bold">
+                  N
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-display text-lg tracking-crunch text-down leading-tight">
+                    No — it didn't happen
+                  </div>
+                  <div className="label text-ink-muted mt-0.5 truncate">
+                    NO bettors win their share of the pool
+                  </div>
+                </div>
+                <TrendingDown className="h-5 w-5 text-down shrink-0" />
+              </button>
+            </div>
+
+            {resolveBusy && (
+              <div className="mt-4 label text-ink-ghost text-center">
+                <span className="dot-live mr-1.5" /> submitting on-chain…
+              </div>
+            )}
           </DialogContent>
         </Dialog>
 
