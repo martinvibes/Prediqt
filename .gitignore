@@ -38,3 +38,6 @@ pnpm-debug.log*
 # misc
 *.tsbuildinfo
 .eslintcache
+
+# generated agent wallets (private keys — never commit)
+.agents.json

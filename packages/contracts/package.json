@@ -12,6 +12,8 @@
     "deploy:local": "hardhat run scripts/deploy-week1.ts --network localhost",
     "deploy:sepolia": "hardhat run scripts/deploy-week1.ts --network sepolia",
     "deploy:week3:sepolia": "hardhat run scripts/deploy-week3.ts --network sepolia",
+    "deploy:week4:sepolia": "hardhat run scripts/deploy-week4.ts --network sepolia",
+    "setup:agents:sepolia": "hardhat run scripts/setup-agents.ts --network sepolia",
     "resolve:sepolia": "hardhat run scripts/resolve.ts --network sepolia",
     "deploy:full:sepolia": "hardhat run scripts/deploy-full.ts --network sepolia",
     "verify:sepolia": "hardhat verify --network sepolia",

@@ -13,7 +13,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ARTIFACTS = join(__dirname, '../../contracts/artifacts/contracts');
 const OUT = join(__dirname, '../src/abis');
 
-const targets = ['PredqCredit', 'RoomRegistry', 'MarketFactory', 'ForecastMarket', 'ResolutionOracle'];
+const targets = ['PredqCredit', 'RoomRegistry', 'MarketFactory', 'ForecastMarket', 'ResolutionOracle', 'AgentRegistry'];
 
 if (!existsSync(ARTIFACTS)) {
   console.error(

@@ -15,6 +15,7 @@ import { LogOut, Plus } from 'lucide-react';
 
 const LINKS = [
   { href: '/pulse', label: 'Pulse' },
+  { href: '/agents', label: 'Agents' },
   { href: '/profile', label: 'Profile' },
 ];
 

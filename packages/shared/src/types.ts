@@ -25,6 +25,7 @@ export interface DeploymentRecord {
     RoomRegistry?: Address;
     MarketFactory?: Address;
     ResolutionOracle?: Address;
+    AgentRegistry?: Address;
     [key: string]: Address | undefined;
   };
 }
