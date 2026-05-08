@@ -50,7 +50,7 @@ export default function Landing() {
             autoRampDuration={0.8}
             style={{ width: '100%', height: '100%' }}
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-canvas/40 to-canvas pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-b from-canvas/10 via-canvas/20 to-canvas/85 pointer-events-none" />
         </div>
 
         <div className="relative z-10 px-5 w-full">
