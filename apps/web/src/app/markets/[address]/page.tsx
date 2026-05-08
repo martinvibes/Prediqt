@@ -32,7 +32,7 @@ export default function MarketPage({ params }: { params: { address: string } }) 
 
 function MarketContent({ address }: { address: string }) {
   const { address: userAddr } = useAuth();
-  const { market, userYes, userNo, loading, refresh } = useMarket(address);
+  const { market, userYes, userNo, hasClaimed, loading, refresh } = useMarket(address);
   const { placeBet, busy: betBusy } = usePlaceBet();
   const { resolve, busy: resolveBusy } = useResolveMarket();
   const { claim, busy: claimBusy } = useClaimPayout();
@@ -52,6 +52,10 @@ function MarketContent({ address }: { address: string }) {
   const amountRaw = BigInt(Math.floor(amountPredq * 1_000_000));
   const canBet = isOpen && side && amountPredq >= 1 && !betBusy;
   const hasPosition = userYes > 0n || userNo > 0n;
+  const winningShares = !isOpen ? (market.outcome ? userYes : userNo) : 0n;
+  const losingShares = !isOpen ? (market.outcome ? userNo : userYes) : 0n;
+  const won = winningShares > 0n;
+  const lost = !won && losingShares > 0n;
   const est = side && amountPredq >= 1 ? estimateReturn(market, side === 'yes', amountPredq) : null;
   const isUp = market.yesPrice >= 50;
 
@@ -172,10 +176,34 @@ function MarketContent({ address }: { address: string }) {
                 <h3 className="font-display text-2xl tracking-crunch">
                   Resolved: <span className={market.outcome ? 'text-up' : 'text-down'}>{market.outcome ? 'YES' : 'NO'}</span>
                 </h3>
-                {hasPosition && (
+
+                {/* Winner — claim button (or already claimed) */}
+                {won && !hasClaimed && (
                   <Button size="lg" onClick={() => setShowClaimConfirm(true)} loading={claimBusy}>
                     <Gift className="h-4 w-4" /> Claim payout
                   </Button>
+                )}
+                {won && hasClaimed && (
+                  <div className="label text-up flex items-center justify-center gap-1.5">
+                    <Gift className="h-3.5 w-3.5" /> payout claimed
+                  </div>
+                )}
+
+                {/* Loser — no claim, just an honest message */}
+                {lost && (
+                  <div className="space-y-1.5 max-w-xs mx-auto">
+                    <div className="font-mono text-sm tabular text-down">
+                      You picked {market.outcome ? 'NO' : 'YES'}.
+                    </div>
+                    <div className="label text-ink-muted">
+                      Bets are non-refundable. Better luck on the next one.
+                    </div>
+                  </div>
+                )}
+
+                {/* No position at all */}
+                {!hasPosition && (
+                  <div className="label text-ink-ghost">You did not bet on this market.</div>
                 )}
               </div>
             )}

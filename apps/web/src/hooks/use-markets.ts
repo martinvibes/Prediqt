@@ -6,7 +6,7 @@ import { useAuth } from './use-auth';
 import { getContract, getContractAddress } from '@/lib/contracts';
 import { ABIS, SUPPORTED_CHAINS } from '@prediqt/shared';
 import { toast } from '@/components/ui/toaster';
-import { creditDeduct } from './use-credit';
+import { creditDeduct, creditAdd } from './use-credit';
 
 export interface MarketInfo {
   id: bigint;
@@ -138,6 +138,7 @@ export function useMarket(marketAddress: string | null) {
   const [loading, setLoading] = useState(true);
   const [userYes, setUserYes] = useState<bigint>(0n);
   const [userNo, setUserNo] = useState<bigint>(0n);
+  const [hasClaimed, setHasClaimed] = useState<boolean>(false);
   const refresh = useCallback(async () => {
     if (!marketAddress) return;
     try {
@@ -159,13 +160,19 @@ export function useMarket(marketAddress: string | null) {
       });
       if (signer) {
         const addr = await signer.getAddress();
-        const [yes, no] = await Promise.all([mc.yesShares(addr), mc.noShares(addr)]);
-        setUserYes(BigInt(yes)); setUserNo(BigInt(no));
+        const [yes, no, claimed] = await Promise.all([
+          mc.yesShares(addr),
+          mc.noShares(addr),
+          mc.hasClaimed(addr),
+        ]);
+        setUserYes(BigInt(yes));
+        setUserNo(BigInt(no));
+        setHasClaimed(Boolean(claimed));
       }
     } catch (e) { console.error('[useMarket]', e); } finally { setLoading(false); }
   }, [marketAddress, signer]);
   useEffect(() => { refresh(); }, [refresh]);
-  return { market, userYes, userNo, loading, refresh };
+  return { market, userYes, userNo, hasClaimed, loading, refresh };
 }
 
 export function useCreateMarket() {
@@ -306,8 +313,32 @@ export function useClaimPayout() {
         const tx = await mc.claimPayout({ gasLimit: 1_500_000 });
         toast({ title: 'Claiming payout…' });
         const receipt = await tx.wait();
-        toast({ title: 'Payout claimed', variant: 'success' });
-        return receipt;
+
+        // Parse the PayoutClaimed event so we can credit the local balance and
+        // give the user a meaningful toast (their actual winnings, not just "ok").
+        let payout: bigint = 0n;
+        for (const log of receipt?.logs ?? []) {
+          try {
+            const parsed = mc.interface.parseLog(log);
+            if (parsed?.name === 'PayoutClaimed') {
+              payout = BigInt(parsed.args.payout);
+              break;
+            }
+          } catch { /* not our event */ }
+        }
+
+        if (payout > 0n) {
+          creditAdd(payout);
+          const display = `${(Number(payout) / 1_000_000).toFixed(2)} PREDQ`;
+          toast({ title: 'Payout claimed', description: `+${display}`, variant: 'success' });
+        } else {
+          toast({
+            title: 'No payout',
+            description: 'Your side did not win — bets are non-refundable.',
+            variant: 'error',
+          });
+        }
+        return { receipt, payout };
       } catch (e: any) {
         toast({ title: 'Claim failed', description: e?.shortMessage ?? e?.message ?? 'unknown', variant: 'error' });
         throw e;
