@@ -9,7 +9,8 @@ import { Nav } from '@/components/nav';
 import { Footer } from '@/components/footer';
 import { AuthGate } from '@/components/auth-gate';
 import { Button } from '@/components/ui/button';
-import { Input, Textarea } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/input';
+import { DateTimePicker } from '@/components/ui/date-picker';
 import { QMark } from '@/components/q-mark';
 import { MarketCard } from '@/components/market-card';
 import {
@@ -227,18 +228,18 @@ function CreateMarketDialog({
 }) {
   const { create, busy } = useCreateMarket();
   const [question, setQuestion] = useState('');
-  const [resolveDate, setResolveDate] = useState('');
+  const [resolveDate, setResolveDate] = useState<Date | null>(null);
 
-  const canSubmit = question.trim().length > 0 && resolveDate.length > 0;
+  const canSubmit = question.trim().length > 0 && resolveDate !== null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canSubmit) return;
-    const ts = Math.floor(new Date(resolveDate).getTime() / 1000);
+    if (!canSubmit || !resolveDate) return;
+    const ts = Math.floor(resolveDate.getTime() / 1000);
     try {
       await create(roomId, question.trim(), ts);
       setQuestion('');
-      setResolveDate('');
+      setResolveDate(null);
       onClose();
       onCreated();
     } catch (e) {
@@ -268,12 +269,12 @@ function CreateMarketDialog({
             <div className="label-micro text-ink-muted text-right">{question.length}/280</div>
           </div>
           <div className="space-y-2">
-            <label className="label-micro">Resolves at</label>
-            <Input
-              type="datetime-local"
+            <label className="label">Resolves at</label>
+            <DateTimePicker
               value={resolveDate}
-              onChange={(e) => setResolveDate(e.target.value)}
-              min={new Date().toISOString().slice(0, 16)}
+              onChange={setResolveDate}
+              minDate={new Date()}
+              placeholder="When does this market resolve?"
             />
           </div>
           <div className="flex items-center justify-between pt-4 border-t border-line">
