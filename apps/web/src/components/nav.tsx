@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Wordmark } from './q-mark';
+import { MobileNav } from './mobile-nav';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from './ui/button';
 import { BalancePill } from './balance-pill';
@@ -11,7 +12,7 @@ import {
   Dialog, DialogContent, DialogTitle, DialogDescription,
 } from './ui/dialog';
 import { shortAddr, cn } from '@/lib/utils';
-import { LogOut, Plus } from 'lucide-react';
+import { LogOut, Plus, Menu } from 'lucide-react';
 
 const LINKS = [
   { href: '/pulse', label: 'Pulse' },
@@ -24,6 +25,7 @@ export function Nav() {
   const { address, status, signIn, signOut } = useAuth();
   const isAuthed = status === 'authenticated';
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const handleSignOut = async () => {
     setConfirmOpen(false);
@@ -33,7 +35,8 @@ export function Nav() {
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-line bg-canvas/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-[1320px] items-center justify-between px-5">
+        <div className="mx-auto flex h-14 max-w-[1320px] items-center justify-between px-4 sm:px-5">
+          {/* Left: brand + desktop links */}
           <div className="flex items-center gap-8">
             <Link href="/" className="ring-focus rounded-md">
               <Wordmark />
@@ -57,41 +60,73 @@ export function Nav() {
               </nav>
             )}
           </div>
+
+          {/* Right: desktop controls + mobile burger */}
           <div className="flex items-center gap-2">
-            {isAuthed ? (
-              <>
-                <Link href="/rooms/new" className="hidden sm:block">
-                  <Button variant="outline" size="sm">
-                    <Plus className="h-3 w-3" />
-                    Room
+            {/* Desktop-only controls */}
+            <div className="hidden md:flex items-center gap-2">
+              {isAuthed ? (
+                <>
+                  <Link href="/rooms/new">
+                    <Button variant="outline" size="sm">
+                      <Plus className="h-3 w-3" />
+                      Room
+                    </Button>
+                  </Link>
+                  <BalancePill />
+                  <div className="flex items-center gap-2 h-8 px-3 rounded-lg bg-canvas-elevated border border-line">
+                    <span className="w-1.5 h-1.5 rounded-full bg-up" />
+                    <span className="font-mono text-[11px] tabular text-ink-muted">
+                      {shortAddr(address)}
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setConfirmOpen(true)}
+                    aria-label="Sign out"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
                   </Button>
-                </Link>
-                <BalancePill />
-                <div className="hidden sm:flex items-center gap-2 h-8 px-3 rounded-lg bg-canvas-elevated border border-line">
-                  <span className="w-1.5 h-1.5 rounded-full bg-up" />
-                  <span className="font-mono text-[11px] tabular text-ink-muted">
-                    {shortAddr(address)}
-                  </span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setConfirmOpen(true)}
-                  aria-label="Sign out"
-                >
-                  <LogOut className="h-3.5 w-3.5" />
+                </>
+              ) : (
+                <Button variant="primary" size="sm" onClick={signIn} loading={status === 'connecting'}>
+                  Sign in
                 </Button>
-              </>
-            ) : (
-              <Button variant="primary" size="sm" onClick={signIn} loading={status === 'connecting'}>
-                Sign in
-              </Button>
-            )}
+              )}
+            </div>
+
+            {/* Mobile: balance pill (compact) when authed + burger always */}
+            <div className="flex md:hidden items-center gap-2">
+              {isAuthed && <BalancePill />}
+              {!isAuthed && (
+                <Button variant="primary" size="sm" onClick={signIn} loading={status === 'connecting'}>
+                  Sign in
+                </Button>
+              )}
+              <button
+                onClick={() => setDrawerOpen(true)}
+                aria-label="Open menu"
+                className="h-9 w-9 grid place-items-center rounded-lg text-ink hover:bg-canvas-elevated transition-colors"
+              >
+                <Menu className="h-4.5 w-4.5" />
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Sign-out confirmation — uses the proven Radix Dialog */}
+      {/* Mobile drawer */}
+      <MobileNav
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        isAuthed={isAuthed}
+        address={address ?? undefined}
+        onSignOut={() => setConfirmOpen(true)}
+        links={LINKS}
+      />
+
+      {/* Sign-out confirmation */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent className="max-w-[340px]">
           <div className="flex items-start gap-3.5 mb-5">

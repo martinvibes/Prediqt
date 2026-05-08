@@ -1,10 +1,13 @@
 import { cn } from '@/lib/utils';
 
 /**
- * The Prediqt Q mark.
- * The Q's tail is split — a half-volt, half-coral diagonal that mirrors
- * the YES/NO duality of every market. The negative space inside the loop
- * is meant to read as a sealed envelope / crystal ball.
+ * The Prediqt mark — "Eclipse".
+ *
+ * Two overlapping circles. The volt circle is the YES outcome; the dim
+ * circle is the NO. The crescent of volt visible between them is the
+ * resolution — one outcome eclipsed by the other.
+ *
+ * One coherent silhouette, no outlines, scales from favicon to billboard.
  */
 export function QMark({
   className,
@@ -15,6 +18,11 @@ export function QMark({
   size?: number;
   monochrome?: boolean;
 }) {
+  const brand = monochrome ? '#FAFAFA' : '#CAFF3C';
+  // Higher-contrast "dim" half so the eclipse reads on dark backgrounds.
+  // Solid pale fill + a clearer stroke gives a crisp edge at every size.
+  const dimFill = monochrome ? 'rgba(250,250,250,0.30)' : 'rgba(250,250,250,0.28)';
+  const dimStroke = monochrome ? 'rgba(250,250,250,0.55)' : 'rgba(250,250,250,0.50)';
   return (
     <svg
       width={size}
@@ -25,46 +33,19 @@ export function QMark({
       className={cn('shrink-0', className)}
       aria-label="Prediqt"
     >
-      <defs>
-        <linearGradient id="q-tail" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor={monochrome ? '#F4F4F0' : '#D9FF3C'} />
-          <stop offset="50%" stopColor={monochrome ? '#F4F4F0' : '#D9FF3C'} />
-          <stop offset="50%" stopColor={monochrome ? '#F4F4F0' : '#FF5C5C'} />
-          <stop offset="100%" stopColor={monochrome ? '#F4F4F0' : '#FF5C5C'} />
-        </linearGradient>
-      </defs>
-      {/* Outer ring — the loop of the Q */}
-      <circle
-        cx="24"
-        cy="22"
-        r="14"
-        stroke={monochrome ? '#F4F4F0' : '#F4F4F0'}
-        strokeWidth="2.5"
-        fill="none"
-      />
-      {/* Inner accent — sealed envelope hint */}
-      <circle cx="24" cy="22" r="5" fill={monochrome ? '#F4F4F0' : '#D9FF3C'} opacity="0.9" />
-      {/* The Q tail — split diagonal */}
-      <line
-        x1="32"
-        y1="30"
-        x2="42"
-        y2="42"
-        stroke="url(#q-tail)"
-        strokeWidth="3.5"
-        strokeLinecap="round"
-      />
+      <circle cx="20" cy="24" r="14" fill={brand} />
+      <circle cx="28" cy="24" r="14" fill={dimFill} stroke={dimStroke} strokeWidth="1.4" />
     </svg>
   );
 }
 
-/** Wordmark — Q mark + "prediqt" lockup */
+/** Wordmark — Eclipse mark + "prediqt" type lockup */
 export function Wordmark({ className }: { className?: string }) {
   return (
-    <div className={cn('inline-flex items-center gap-2', className)}>
-      <QMark size={22} />
+    <div className={cn('inline-flex items-center gap-1', className)}>
+      <QMark size={28} />
       <span className="font-display text-2xl tracking-crunch text-ink leading-none">
-        prediqt
+        predi <span className='text-volt font-semibold'>Q</span>t
       </span>
     </div>
   );

@@ -76,9 +76,9 @@ function RoomContent({ roomId }: { roomId: bigint }) {
   const Icon = isPrivate ? Lock : Globe2;
 
   return (
-    <section className="flex-1 px-6 pt-16 pb-24">
+    <section className="flex-1 px-4 sm:px-6 pt-10 sm:pt-16 pb-20 sm:pb-24">
       <div className="mx-auto max-w-[1280px]">
-        <Link href="/pulse" className="inline-flex items-center gap-2 label-micro hover:text-ink mb-10">
+        <Link href="/pulse" className="inline-flex items-center gap-2 label-micro hover:text-ink mb-8 sm:mb-10">
           <ArrowLeft className="h-3 w-3" />
           back to pulse
         </Link>
@@ -88,22 +88,22 @@ function RoomContent({ roomId }: { roomId: bigint }) {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="grid grid-cols-1 md:grid-cols-12 gap-y-8 mb-12"
+          className="grid grid-cols-1 md:grid-cols-12 gap-y-6 md:gap-y-8 mb-10 md:mb-12"
         >
-          <div className="md:col-span-8 space-y-5">
-            <div className="flex items-center gap-3 label-micro">
+          <div className="md:col-span-8 space-y-4 sm:space-y-5">
+            <div className="flex items-center gap-2 sm:gap-3 label-micro flex-wrap">
               <Icon className="h-3 w-3" />
               {isPrivate ? 'Private' : 'Public'} room
-              <span className="text-ink-ghost">/</span>
+              <span className="text-ink-muted">/</span>
               <span className="text-ink-muted font-mono">#{room.id.toString()}</span>
               {isCreator && (
                 <>
-                  <span className="text-ink-ghost">/</span>
+                  <span className="text-ink-muted">/</span>
                   <span className="text-volt">you&apos;re the creator</span>
                 </>
               )}
             </div>
-            <h1 className="heading-display text-mega">{room.name}</h1>
+            <h1 className="font-display tracking-crunch leading-[0.95] text-4xl sm:text-5xl md:text-mega">{room.name}</h1>
             {room.description && (
               <p className="text-ink-dim text-base md:text-lg leading-relaxed max-w-[680px]">
                 {room.description}

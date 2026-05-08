@@ -59,15 +59,15 @@ export function LiveStatsRibbon({ markets }: { markets: MarketInfo[] }) {
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay: 0.2 }}
-      className="inline-flex items-stretch divide-x divide-line rounded-full border border-line bg-canvas-elevated/70 backdrop-blur-md overflow-hidden"
+      className="inline-flex flex-wrap items-stretch rounded-2xl sm:rounded-full border border-line bg-canvas-elevated/70 backdrop-blur-md overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-line"
     >
       {items.map(({ Icon, label, value }) => (
-        <div key={label} className="px-4 py-2 flex items-center gap-2">
-          <Icon className="h-3 w-3 text-volt" />
+        <div key={label} className="px-3 sm:px-4 py-2 flex items-center gap-2 min-w-[160px] sm:min-w-0 flex-1 sm:flex-none">
+          <Icon className="h-3 w-3 text-volt shrink-0" />
           <span className="font-mono text-sm tabular text-ink font-semibold">
             <CountUp value={value} />
           </span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted">
+          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted truncate">
             {label}
           </span>
         </div>

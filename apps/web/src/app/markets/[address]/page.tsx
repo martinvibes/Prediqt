@@ -78,28 +78,36 @@ function MarketContent({ address }: { address: string }) {
   };
 
   return (
-    <section className="flex-1 px-5 pt-8 pb-20">
+    <section className="flex-1 px-4 sm:px-5 pt-6 sm:pt-8 pb-20">
       <div className="mx-auto max-w-[960px]">
-        <Link href={`/rooms/${market.roomId.toString()}`} className="inline-flex items-center gap-1.5 label hover:text-ink transition-colors mb-8">
+        <Link href={`/rooms/${market.roomId.toString()}`} className="inline-flex items-center gap-1.5 label hover:text-ink transition-colors mb-6 sm:mb-8">
           <ArrowLeft className="h-3 w-3" /> Back to room
         </Link>
 
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
-          <div className="flex items-center gap-2 label mb-3">
-            {isOpen ? <><span className="dot-live" /> live</> : <span className="text-ink-ghost">{market.outcome ? 'yes won' : 'no won'}</span>}
-            <span className="text-ink-ghost">·</span>
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-8 sm:mb-10">
+          <div className="flex items-center gap-2 label mb-3 flex-wrap">
+            {isOpen ? <><span className="dot-live" /> live</> : <span className="text-ink-muted">{market.outcome ? 'yes won' : 'no won'}</span>}
+            <span className="text-ink-muted">·</span>
             <Clock className="h-3 w-3" /> {isOpen ? relativeTime(market.resolveAt) : 'settled'}
           </div>
-          <h1 className="font-display text-stat tracking-crunch mb-5">{market.question}</h1>
-          <div className="flex items-end justify-between gap-6 mb-4">
+          <h1 className="font-display tracking-crunch leading-[0.95] mb-5 text-3xl sm:text-4xl md:text-stat">
+            {market.question}
+          </h1>
+          <div className="flex items-end justify-between gap-4 mb-4">
             <div className="flex items-baseline gap-3">
-              <span className={cn('font-mono text-6xl tabular font-bold tracking-tightest', isUp ? 'text-up' : 'text-down')}>
+              <span className={cn('font-mono tabular font-bold tracking-tightest text-5xl sm:text-6xl', isUp ? 'text-up' : 'text-down')}>
                 {market.yesPrice.toFixed(1)}%
               </span>
               <span className="label">yes</span>
             </div>
-            <Sparkline seed={address} currentValue={market.yesPrice} width={140} height={48} />
+            <Sparkline
+              seed={address}
+              currentValue={market.yesPrice}
+              width={100}
+              height={40}
+              className="hidden sm:block"
+            />
           </div>
           <ProbabilityBar yesPercent={market.yesPrice} size="lg" />
         </motion.div>

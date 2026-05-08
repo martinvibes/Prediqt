@@ -76,7 +76,7 @@ export function AgentsClient({ status }: { status: AgentsStatus }) {
     });
 
   return (
-    <section className="flex-1 px-6 pt-10 pb-24">
+    <section className="flex-1 px-4 sm:px-6 pt-8 sm:pt-10 pb-20 sm:pb-24">
       <div className="mx-auto max-w-[1280px]">
         {/* ─── HERO ─── */}
         <Hero status={status} pending={pending} onTick={handleTick} />
@@ -133,13 +133,13 @@ function Hero({
         transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
       />
 
-      <div className="relative p-8 md:p-12 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+      <div className="relative p-6 sm:p-8 md:p-12 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
         <div className="lg:col-span-7 space-y-5">
           <div className="flex items-center gap-2 label">
             <Radio className="h-3 w-3 text-volt" />
             <span className="text-volt">autonomous traders · running</span>
           </div>
-          <h1 className="font-display text-5xl md:text-7xl tracking-crunch leading-[0.95]">
+          <h1 className="font-display tracking-crunch leading-[0.95] text-4xl sm:text-5xl md:text-6xl lg:text-7xl">
             Three traders.
             <br />
             <span className="text-volt italic">Your competition.</span>
@@ -160,7 +160,7 @@ function Hero({
         </div>
 
         {/* Agent avatar tower */}
-        <div className="lg:col-span-5 flex items-center justify-center gap-3">
+        <div className="lg:col-span-5 flex items-center justify-center gap-3 flex-wrap">
           {status.agents.map((a, i) => {
             const pal = paletteFor(a.name);
             return (
@@ -173,7 +173,7 @@ function Hero({
               >
                 <motion.div
                   whileHover={{ scale: 1.05, rotate: -2 }}
-                  className="relative h-20 w-20 md:h-24 md:w-24 rounded-2xl grid place-items-center font-display text-4xl md:text-5xl font-bold"
+                  className="relative h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 rounded-2xl grid place-items-center font-display text-3xl sm:text-4xl md:text-5xl font-bold"
                   style={{
                     background: pal.bg,
                     color: pal.primary,

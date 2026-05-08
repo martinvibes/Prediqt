@@ -50,40 +50,40 @@ function PulseContent() {
   const resolvedMarkets = filteredMarkets.filter((m) => m.status !== 0);
 
   return (
-    <section className="flex-1 px-5 pt-10 pb-20">
+    <section className="flex-1 px-4 sm:px-5 pt-8 sm:pt-10 pb-20">
       <div className="mx-auto max-w-[1320px]">
 
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 sm:gap-6 mb-8 sm:mb-10">
           <div>
             <div className="label mb-3 flex items-center gap-2">
               <TrendingUp className="h-3 w-3 text-volt" />
               Pulse
             </div>
-            <h1 className="heading-display text-stat text-ink">
+            <h1 className="font-display tracking-crunch leading-[0.95] text-4xl sm:text-5xl md:text-stat text-ink">
               What happens <span className="italic text-volt">next?</span>
             </h1>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-ghost" />
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="relative flex-1 md:flex-none">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-muted" />
               <Input
                 placeholder="Search…"
                 value={query} onChange={(e) => setQuery(e.target.value)}
-                className="h-9 pl-9 w-52 text-sm rounded-lg bg-canvas-elevated"
+                className="h-9 pl-9 w-full md:w-52 text-sm rounded-lg bg-canvas-elevated"
               />
             </div>
-            <Link href="/rooms/new">
+            <Link href="/rooms/new" className="shrink-0">
               <Button size="sm" variant="outline">
                 <Plus className="h-3 w-3" />
-                Room
+                <span className="hidden sm:inline">Room</span>
               </Button>
             </Link>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex items-center gap-1 p-1 rounded-xl bg-canvas-raised border border-line w-fit mb-8">
+        {/* Tabs — scroll horizontally if too wide */}
+        <div className="flex items-center gap-1 p-1 rounded-xl bg-canvas-raised border border-line w-fit max-w-full overflow-x-auto mb-6 sm:mb-8">
           <TabBtn active={tab === 'markets'} onClick={() => setTab('markets')}>
             Markets {allMarkets.markets.length > 0 && <Count n={allMarkets.markets.length} />}
           </TabBtn>

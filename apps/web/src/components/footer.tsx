@@ -5,9 +5,9 @@ export function Footer() {
     <footer className="mt-auto border-t border-line">
       <div className="mx-auto max-w-[1320px] px-5 py-8">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <QMark size={16} />
-            <span className="font-display text-lg tracking-crunch">prediqt</span>
+          <div className="flex items-center gap-1">
+            <QMark size={34} />
+            <span className="font-display text-xl tracking-crunch">predi <span className='text-volt font-semibold'>Q</span>t</span>
             <span className="label ml-2">v0.1 · sepolia</span>
           </div>
           <div className="flex items-center gap-4 label">

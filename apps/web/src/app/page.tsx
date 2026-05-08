@@ -108,7 +108,7 @@ export default function Landing() {
               >
                 Bet YES or NO on anything — sports, crypto, your team's quarterly
                 target. Positions stay encrypted with{' '}
-                <span className="text-ink underline decoration-volt/40 decoration-2 underline-offset-4">
+                <span className="text-[#CAFF3C] underline decoration-volt/40 decoration-2 underline-offset-4">
                   Zama FHE
                 </span>
                 . Three AI agents bet alongside you in real time.
