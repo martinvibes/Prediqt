@@ -10,13 +10,15 @@ import { Footer } from '@/components/footer';
 import { AuthGate } from '@/components/auth-gate';
 import { OnboardingModal } from '@/components/onboarding-modal';
 import { RoomCard } from '@/components/room-card';
+import { MarketCard } from '@/components/market-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { QMark } from '@/components/q-mark';
 import { usePublicRooms, useMyRooms } from '@/hooks/use-rooms';
+import { useAllMarkets } from '@/hooks/use-markets';
 import { cn } from '@/lib/utils';
 
-type Tab = 'public' | 'mine';
+type Tab = 'markets' | 'rooms' | 'mine';
 
 export default function PulsePage() {
   return (
@@ -32,20 +34,22 @@ export default function PulsePage() {
 }
 
 function PulseContent() {
-  const [tab, setTab] = useState<Tab>('public');
+  const [tab, setTab] = useState<Tab>('markets');
   const [query, setQuery] = useState('');
   const publicRooms = usePublicRooms();
   const myRooms = useMyRooms();
+  const allMarkets = useAllMarkets();
 
-  const active = tab === 'public' ? publicRooms : myRooms;
-  const filtered = active.rooms.filter((r) =>
+  const filteredRooms = (tab === 'rooms' ? publicRooms.rooms : myRooms.rooms).filter((r) =>
     query.trim() ? r.name.toLowerCase().includes(query.toLowerCase()) : true,
+  );
+  const filteredMarkets = allMarkets.markets.filter((m) =>
+    query.trim() ? m.question.toLowerCase().includes(query.toLowerCase()) : true,
   );
 
   return (
     <section className="flex-1 px-6 pt-16 pb-24">
       <div className="mx-auto max-w-[1280px]">
-        {/* Editorial header */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-y-8 mb-16">
           <div className="md:col-span-4 space-y-2">
             <div className="label-micro flex items-center gap-2">
@@ -53,29 +57,27 @@ function PulseContent() {
               Pulse
             </div>
             <p className="text-ink-dim text-sm pt-2">
-              All rooms you can see right now.
+              Live markets and rooms across the network.
             </p>
           </div>
           <h1 className="md:col-span-8 heading-display text-mega">
-            What do you{' '}
-            <span className="italic text-volt">believe?</span>
+            What do you <span className="italic text-volt">believe?</span>
           </h1>
         </div>
 
-        {/* Tab switcher + search */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div className="flex items-center gap-1 p-1 rounded-xl border border-line bg-canvas-raised w-fit">
-            <TabButton active={tab === 'public'} onClick={() => setTab('public')}>
-              Public
-              <span className="ml-2 text-ink-muted text-xs tabular">
-                {publicRooms.rooms.length}
-              </span>
+            <TabButton active={tab === 'markets'} onClick={() => setTab('markets')}>
+              Markets
+              <span className="ml-2 text-ink-muted text-xs tabular">{allMarkets.markets.length}</span>
+            </TabButton>
+            <TabButton active={tab === 'rooms'} onClick={() => setTab('rooms')}>
+              Rooms
+              <span className="ml-2 text-ink-muted text-xs tabular">{publicRooms.rooms.length}</span>
             </TabButton>
             <TabButton active={tab === 'mine'} onClick={() => setTab('mine')}>
               My rooms
-              <span className="ml-2 text-ink-muted text-xs tabular">
-                {myRooms.rooms.length}
-              </span>
+              <span className="ml-2 text-ink-muted text-xs tabular">{myRooms.rooms.length}</span>
             </TabButton>
           </div>
 
@@ -83,9 +85,8 @@ function PulseContent() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-muted" />
               <Input
-                placeholder="Search rooms…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                placeholder={tab === 'markets' ? 'Search markets…' : 'Search rooms…'}
+                value={query} onChange={(e) => setQuery(e.target.value)}
                 className="h-10 pl-9 w-64"
               />
             </div>
@@ -98,78 +99,66 @@ function PulseContent() {
           </div>
         </div>
 
-        {/* Room grid */}
         <AnimatePresence mode="wait">
           <motion.div
-            key={tab + filtered.length}
+            key={tab + (tab === 'markets' ? filteredMarkets.length : filteredRooms.length)}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
           >
-            {active.loading ? (
-              <SkeletonGrid />
-            ) : filtered.length === 0 ? (
-              <EmptyState tab={tab} hasQuery={query.trim().length > 0} />
+            {tab === 'markets' ? (
+              allMarkets.loading ? (
+                <SkeletonGrid />
+              ) : filteredMarkets.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-line p-16 text-center space-y-6">
+                  <QMark size={48} className="mx-auto opacity-50" />
+                  <div className="space-y-2 max-w-sm mx-auto">
+                    <h3 className="font-display text-2xl tracking-crunch">No markets yet.</h3>
+                    <p className="text-ink-dim text-sm">
+                      Go to a room and post the first question.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredMarkets.map((m, i) => (
+                    <MarketCard key={m.id.toString()} market={m} index={i} />
+                  ))}
+                </div>
+              )
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filtered.map((room, i) => (
-                  <RoomCard key={room.id.toString()} room={room} index={i} />
-                ))}
-              </div>
+              (() => {
+                const loading = tab === 'rooms' ? publicRooms.loading : myRooms.loading;
+                return loading ? (
+                  <SkeletonGrid />
+                ) : filteredRooms.length === 0 ? (
+                  <EmptyState tab={tab} hasQuery={query.trim().length > 0} />
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredRooms.map((room, i) => (
+                      <RoomCard key={room.id.toString()} room={room} index={i} />
+                    ))}
+                  </div>
+                );
+              })()
             )}
           </motion.div>
         </AnimatePresence>
-
-        {/* Markets-coming-soon banner — Week 2 */}
-        <div className="mt-16 rounded-2xl border border-line bg-canvas-raised p-8 md:p-10">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-            <div className="md:col-span-8 space-y-3">
-              <div className="label-micro flex items-center gap-2">
-                <span className="q-dot" />
-                Week 2 · Coming next
-              </div>
-              <h3 className="font-display text-3xl tracking-crunch">
-                Markets land inside rooms.
-              </h3>
-              <p className="text-ink-dim text-sm leading-relaxed">
-                Constant-product AMM. YES / NO bets encrypted on-chain. Public price,
-                private positions. <span className="text-volt">Real markets — not mock data.</span>
-              </p>
-            </div>
-            <div className="md:col-span-4 flex justify-end">
-              <QMark size={56} className="opacity-30" />
-            </div>
-          </div>
-        </div>
       </div>
     </section>
   );
 }
 
-function TabButton({
-  active,
-  children,
-  onClick,
-}: {
-  active: boolean;
-  children: React.ReactNode;
-  onClick: () => void;
-}) {
+function TabButton({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'relative px-4 py-1.5 rounded-lg font-mono uppercase tracking-wider text-xs transition-colors',
-        active ? 'text-canvas' : 'text-ink-dim hover:text-ink',
-      )}
-    >
+    <button onClick={onClick} className={cn(
+      'relative px-4 py-1.5 rounded-lg font-mono uppercase tracking-wider text-xs transition-colors',
+      active ? 'text-canvas' : 'text-ink-dim hover:text-ink',
+    )}>
       {active && (
-        <motion.div
-          layoutId="tab-bg"
-          className="absolute inset-0 rounded-lg bg-volt"
-          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        />
+        <motion.div layoutId="tab-bg" className="absolute inset-0 rounded-lg bg-volt"
+          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }} />
       )}
       <span className="relative">{children}</span>
     </button>
@@ -180,47 +169,25 @@ function SkeletonGrid() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div
-          key={i}
-          className="shimmer-overlay rounded-2xl border border-line bg-canvas-raised p-6 h-44"
-        />
+        <div key={i} className="shimmer-overlay rounded-2xl border border-line bg-canvas-raised p-6 h-44" />
       ))}
     </div>
   );
 }
 
 function EmptyState({ tab, hasQuery }: { tab: Tab; hasQuery: boolean }) {
-  if (hasQuery) {
-    return (
-      <div className="text-center py-24">
-        <p className="text-ink-dim font-mono text-sm">No rooms match.</p>
-      </div>
-    );
-  }
+  if (hasQuery) return <div className="text-center py-24"><p className="text-ink-dim font-mono text-sm">No rooms match.</p></div>;
   if (tab === 'mine') {
     return (
       <div className="rounded-2xl border border-dashed border-line p-16 text-center space-y-6">
         <QMark size={48} className="mx-auto opacity-50" />
         <div className="space-y-2 max-w-sm mx-auto">
           <h3 className="font-display text-2xl tracking-crunch">No private rooms yet.</h3>
-          <p className="text-ink-dim text-sm">
-            Spin up a private room for your team, your friends, or your Discord.
-          </p>
+          <p className="text-ink-dim text-sm">Spin up a private room for your team, friends, or community.</p>
         </div>
-        <Link href="/rooms/new" className="inline-block">
-          <Button size="md">
-            <Plus className="h-3.5 w-3.5" />
-            Create a room
-          </Button>
-        </Link>
+        <Link href="/rooms/new" className="inline-block"><Button size="md"><Plus className="h-3.5 w-3.5" />Create a room</Button></Link>
       </div>
     );
   }
-  return (
-    <div className="rounded-2xl border border-dashed border-line p-16 text-center space-y-4">
-      <p className="text-ink-dim font-mono text-sm">
-        No public rooms found. Has the registry been deployed?
-      </p>
-    </div>
-  );
+  return <div className="rounded-2xl border border-dashed border-line p-16 text-center space-y-4"><p className="text-ink-dim font-mono text-sm">No public rooms found. Has the registry been deployed?</p></div>;
 }

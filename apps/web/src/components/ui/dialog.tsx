@@ -32,21 +32,23 @@ const DialogContent = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        'fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2',
-        'w-[92vw] max-w-lg max-h-[90vh] overflow-y-auto',
-        'rounded-3xl border border-line bg-canvas-raised',
-        'shadow-2xl shadow-black/50',
-        'data-[state=open]:animate-fade-up',
-        'p-8',
-        className,
-      )}
-      {...props}
-    >
-      {children}
-      <DialogPrimitive.Close
+    {/* Flex wrapper ensures the dialog stays within the viewport */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+      <DialogPrimitive.Content
+        ref={ref}
+        className={cn(
+          'pointer-events-auto relative',
+          'w-[92vw] max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto',
+          'rounded-3xl border border-line bg-canvas-raised',
+          'shadow-2xl shadow-black/50',
+          'data-[state=open]:animate-fade-up',
+          'p-8',
+          className,
+        )}
+        {...props}
+      >
+        {children}
+        <DialogPrimitive.Close
         className={cn(
           'absolute right-5 top-5 rounded-full p-2',
           'text-ink-dim hover:text-ink hover:bg-line transition-colors',
@@ -57,6 +59,7 @@ const DialogContent = React.forwardRef<
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
+    </div>
   </DialogPortal>
 ));
 DialogContent.displayName = DialogPrimitive.Content.displayName;

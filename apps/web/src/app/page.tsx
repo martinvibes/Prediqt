@@ -1,7 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight, Lock, Globe2, Bot } from 'lucide-react';
@@ -15,12 +13,7 @@ import { QMark } from '@/components/q-mark';
 import { useAuth } from '@/hooks/use-auth';
 
 export default function Landing() {
-  const router = useRouter();
   const { status, signIn } = useAuth();
-
-  useEffect(() => {
-    if (status === 'authenticated') router.replace('/pulse');
-  }, [status, router]);
 
   return (
     <main className="relative min-h-screen flex flex-col">
@@ -74,10 +67,19 @@ export default function Landing() {
                 transition={{ duration: 0.6, delay: 0.6 }}
                 className="flex flex-wrap items-center gap-4 pt-4"
               >
-                <Button size="xl" onClick={signIn} loading={status === 'connecting'}>
-                  Open Prediqt
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
+                {status === 'authenticated' ? (
+                  <Link href="/pulse">
+                    <Button size="xl">
+                      Go to Pulse
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button size="xl" onClick={signIn} loading={status === 'connecting'}>
+                    Open Prediqt
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                )}
                 <Link href="#how" className="label-micro text-ink-dim hover:text-ink">
                   How it works ↓
                 </Link>
@@ -230,10 +232,19 @@ export default function Landing() {
               .
             </p>
             <div className="pt-6">
-              <Button size="xl" onClick={signIn} loading={status === 'connecting'}>
-                Sign in & mint 1,000 PREDQ
-                <ArrowRight className="h-4 w-4" />
-              </Button>
+              {status === 'authenticated' ? (
+                <Link href="/pulse">
+                  <Button size="xl">
+                    Go to Pulse
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+              ) : (
+                <Button size="xl" onClick={signIn} loading={status === 'connecting'}>
+                  Sign in & mint 1,000 PREDQ
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              )}
               <p className="label-micro mt-4">
                 Free testnet credits · No KYC · Email or wallet
               </p>

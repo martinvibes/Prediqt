@@ -5,18 +5,14 @@ import { EncryptedReveal } from './encrypted-reveal';
 import { formatPredq } from '@/lib/utils';
 
 export function BalancePill() {
-  const { balance, status, refresh } = useCredit();
+  const { balance, status } = useCredit();
 
   return (
-    <button
-      onClick={refresh}
-      className="hidden sm:flex items-center gap-2 px-3 h-8 rounded-lg border border-volt/30 bg-volt/5 hover:bg-volt/10 transition-colors group"
-      title="Click to refresh encrypted balance"
-    >
+    <div className="hidden sm:flex items-center gap-2 px-3 h-8 rounded-lg border border-volt/30 bg-volt/5">
       <span className="block w-1 h-1 rounded-full bg-volt animate-q-pulse" />
       <span className="font-mono text-xs tabular tracking-wider">
         {status === 'loading' ? (
-          <span className="text-ink-dim">decrypting…</span>
+          <span className="text-ink-dim">…</span>
         ) : status === 'decrypted' && balance !== null ? (
           <>
             <EncryptedReveal
@@ -26,12 +22,10 @@ export function BalancePill() {
             />
             <span className="text-ink-dim ml-1">PREDQ</span>
           </>
-        ) : status === 'encrypted' ? (
-          <span className="text-ink-dim">●●●●● PREDQ</span>
         ) : (
           <span className="text-ink-dim">— PREDQ</span>
         )}
       </span>
-    </button>
+    </div>
   );
 }

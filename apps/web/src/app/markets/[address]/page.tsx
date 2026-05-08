@@ -1,9 +1,9 @@
 'use client';
 
-import { use, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Clock, Users, TrendingUp, TrendingDown } from 'lucide-react';
+import { ArrowLeft, Clock, Users, TrendingUp, TrendingDown, Gavel, Gift } from 'lucide-react';
 
 import { Nav } from '@/components/nav';
 import { Footer } from '@/components/footer';
@@ -13,16 +13,15 @@ import { Input } from '@/components/ui/input';
 import { ProbabilityBar } from '@/components/probability-bar';
 import { EncryptedReveal } from '@/components/encrypted-reveal';
 import { QMark } from '@/components/q-mark';
-import { useMarket, usePlaceBet } from '@/hooks/use-markets';
+import {
+  Dialog, DialogContent, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
+import { useMarket, usePlaceBet, useResolveMarket, useClaimPayout, type MarketInfo } from '@/hooks/use-markets';
+import { useAuth } from '@/hooks/use-auth';
 import { relativeTime, formatPredq, shortAddr, cn } from '@/lib/utils';
 
-export default function MarketPage({
-  params,
-}: {
-  params: Promise<{ address: string }>;
-}) {
-  const { address } = use(params);
-
+export default function MarketPage({ params }: { params: { address: string } }) {
+  const { address } = params;
   return (
     <main className="relative min-h-screen flex flex-col">
       <Nav />
@@ -35,10 +34,14 @@ export default function MarketPage({
 }
 
 function MarketContent({ address }: { address: string }) {
+  const { address: userAddr } = useAuth();
   const { market, userYes, userNo, loading, refresh } = useMarket(address);
-  const { placeBet, busy } = usePlaceBet();
+  const { placeBet, busy: betBusy } = usePlaceBet();
+  const { resolve, busy: resolveBusy } = useResolveMarket();
+  const { claim, busy: claimBusy } = useClaimPayout();
   const [amount, setAmount] = useState('');
   const [side, setSide] = useState<'yes' | 'no' | null>(null);
+  const [showResolve, setShowResolve] = useState(false);
 
   if (loading) {
     return (
@@ -60,9 +63,13 @@ function MarketContent({ address }: { address: string }) {
   }
 
   const isOpen = market.status === 0;
+  const isResolver = userAddr && userAddr.toLowerCase() === market.creator.toLowerCase();
+  const canResolve = isResolver && isOpen;
   const amountPredq = parseFloat(amount) || 0;
   const amountRaw = BigInt(Math.floor(amountPredq * 1_000_000));
-  const canBet = isOpen && side && amountPredq >= 1 && !busy;
+  const canBet = isOpen && side && amountPredq >= 1 && !betBusy;
+  const hasPosition = userYes > 0n || userNo > 0n;
+  const est = side && amountPredq >= 1 ? estimateReturn(market, side === 'yes', amountPredq) : null;
 
   const handleBet = async () => {
     if (!side || amountRaw < 1_000_000n) return;
@@ -71,9 +78,22 @@ function MarketContent({ address }: { address: string }) {
       setAmount('');
       setSide(null);
       refresh();
-    } catch (e) {
-      console.error(e);
-    }
+    } catch { /* toast already shown */ }
+  };
+
+  const handleResolve = async (outcome: boolean) => {
+    try {
+      await resolve(address, outcome);
+      setShowResolve(false);
+      refresh();
+    } catch { /* toast shown */ }
+  };
+
+  const handleClaim = async () => {
+    try {
+      await claim(address);
+      refresh();
+    } catch { /* toast shown */ }
   };
 
   return (
@@ -87,7 +107,6 @@ function MarketContent({ address }: { address: string }) {
           back to room
         </Link>
 
-        {/* Question header */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -103,6 +122,18 @@ function MarketContent({ address }: { address: string }) {
               <Clock className="h-3 w-3" />
               {isOpen ? `resolves ${relativeTime(market.resolveAt)}` : 'settled'}
             </span>
+            {canResolve && (
+              <>
+                <span className="text-ink-ghost">/</span>
+                <button
+                  onClick={() => setShowResolve(true)}
+                  className="text-volt hover:underline flex items-center gap-1"
+                >
+                  <Gavel className="h-3 w-3" />
+                  Resolve
+                </button>
+              </>
+            )}
           </div>
           <h1 className="heading-display text-mega">{market.question}</h1>
           <ProbabilityBar yesPercent={market.yesPrice} size="lg" />
@@ -122,16 +153,12 @@ function MarketContent({ address }: { address: string }) {
                   <span className="q-dot" />
                   Place your bet
                 </div>
-
-                {/* YES / NO toggle */}
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => setSide('yes')}
                     className={cn(
                       'relative flex flex-col items-center justify-center h-24 rounded-2xl border-2 transition-all duration-200',
-                      side === 'yes'
-                        ? 'border-volt bg-volt/10 shadow-glow-volt'
-                        : 'border-line hover:border-volt/40',
+                      side === 'yes' ? 'border-volt bg-volt/10 shadow-glow-volt' : 'border-line hover:border-volt/40',
                     )}
                   >
                     <TrendingUp className={cn('h-5 w-5 mb-1', side === 'yes' ? 'text-volt' : 'text-ink-dim')} />
@@ -142,9 +169,7 @@ function MarketContent({ address }: { address: string }) {
                     onClick={() => setSide('no')}
                     className={cn(
                       'relative flex flex-col items-center justify-center h-24 rounded-2xl border-2 transition-all duration-200',
-                      side === 'no'
-                        ? 'border-coral bg-coral/10 shadow-glow-coral'
-                        : 'border-line hover:border-coral/40',
+                      side === 'no' ? 'border-coral bg-coral/10 shadow-glow-coral' : 'border-line hover:border-coral/40',
                     )}
                   >
                     <TrendingDown className={cn('h-5 w-5 mb-1', side === 'no' ? 'text-coral' : 'text-ink-dim')} />
@@ -153,7 +178,6 @@ function MarketContent({ address }: { address: string }) {
                   </button>
                 </div>
 
-                {/* Amount input */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="label-micro">Amount (PREDQ)</span>
@@ -170,44 +194,48 @@ function MarketContent({ address }: { address: string }) {
                     </div>
                   </div>
                   <Input
-                    type="number"
-                    placeholder="0"
-                    min="1"
-                    step="1"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
+                    type="number" placeholder="0" min="1" step="1"
+                    value={amount} onChange={(e) => setAmount(e.target.value)}
                     className="font-mono text-2xl tabular h-14"
                   />
                 </div>
 
-                {/* Potential return */}
-                {side && amountPredq >= 1 && (
-                  <div className="rounded-xl border border-line bg-canvas p-4 space-y-2">
-                    <div className="label-micro">If {side === 'yes' ? 'YES' : 'NO'} wins</div>
-                    <div className="font-mono text-xl tabular text-volt">
-                      ~{estimateReturn(market, side === 'yes', amountPredq).toFixed(1)} PREDQ
+                {/* Return estimate */}
+                {est && (
+                  <div className="rounded-xl border border-volt/20 bg-volt/5 p-4 space-y-2">
+                    <div className="label-micro flex items-center gap-2">
+                      <Gift className="h-3 w-3 text-volt" />
+                      Estimated return if {side === 'yes' ? 'YES' : 'NO'} wins
                     </div>
-                    <div className="label-micro text-ink-muted">
-                      ~{(estimateReturn(market, side === 'yes', amountPredq) / amountPredq).toFixed(2)}x return
+                    <div className="flex items-baseline gap-3">
+                      <span className="font-mono text-2xl tabular text-volt">
+                        {est.payout.toFixed(1)} PREDQ
+                      </span>
+                      <span className={cn(
+                        'font-mono text-sm tabular',
+                        est.multiplier >= 2 ? 'text-volt' : 'text-ink-dim',
+                      )}>
+                        {est.multiplier.toFixed(2)}x
+                      </span>
+                    </div>
+                    <div className="font-mono text-xs tabular text-ink-muted">
+                      Profit: +{est.profit.toFixed(1)} PREDQ · {est.shares.toFixed(0)} shares
                     </div>
                   </div>
                 )}
 
                 <Button
-                  size="xl"
-                  className="w-full"
+                  size="xl" className="w-full"
                   variant={side === 'no' ? 'danger' : 'primary'}
-                  disabled={!canBet}
-                  loading={busy}
-                  onClick={handleBet}
+                  disabled={!canBet} loading={betBusy} onClick={handleBet}
                 >
                   {side ? `Bet ${side.toUpperCase()} · ${amountPredq || 0} PREDQ` : 'Pick YES or NO'}
                 </Button>
               </div>
             ) : (
-              <div className="rounded-3xl border border-line bg-canvas-raised p-8 text-center space-y-4">
+              <div className="rounded-3xl border border-line bg-canvas-raised p-8 text-center space-y-6">
                 <div className={cn(
-                  'inline-flex h-16 w-16 items-center justify-center rounded-full',
+                  'inline-flex h-16 w-16 items-center justify-center rounded-full mx-auto',
                   market.outcome ? 'bg-volt/10 ring-1 ring-volt/40' : 'bg-coral/10 ring-1 ring-coral/40',
                 )}>
                   {market.outcome
@@ -219,11 +247,17 @@ function MarketContent({ address }: { address: string }) {
                     {market.outcome ? 'YES' : 'NO'}
                   </span>
                 </h3>
+                {hasPosition && (
+                  <Button size="lg" onClick={handleClaim} loading={claimBusy}>
+                    <Gift className="h-4 w-4" />
+                    Claim payout
+                  </Button>
+                )}
               </div>
             )}
           </motion.div>
 
-          {/* Stats sidebar */}
+          {/* Sidebar */}
           <aside className="lg:col-span-5 space-y-4">
             <div className="rounded-2xl border border-line bg-canvas-raised p-6 space-y-4">
               <div className="label-micro flex items-center gap-2">
@@ -238,8 +272,7 @@ function MarketContent({ address }: { address: string }) {
               </div>
             </div>
 
-            {/* User position */}
-            {(userYes > 0n || userNo > 0n) && (
+            {hasPosition && (
               <div className="rounded-2xl border border-volt/30 bg-volt/5 p-6 space-y-3">
                 <div className="label-micro flex items-center gap-2">
                   <span className="q-dot" />
@@ -265,36 +298,49 @@ function MarketContent({ address }: { address: string }) {
             )}
 
             <div className="rounded-2xl border border-line bg-canvas-raised p-6 space-y-2">
-              <div className="label-micro">Creator</div>
+              <div className="label-micro">Resolver</div>
               <div className="font-mono text-xs tabular text-ink-dim">
                 {shortAddr(market.creator, 8, 6)}
+                {isResolver && <span className="text-volt ml-2">(you)</span>}
               </div>
               <div className="label-micro mt-3">Contract</div>
-              <a
-                href={`https://sepolia.etherscan.io/address/${address}`}
-                target="_blank"
-                rel="noreferrer"
-                className="font-mono text-xs tabular text-volt hover:underline"
-              >
+              <a href={`https://sepolia.etherscan.io/address/${address}`} target="_blank" rel="noreferrer"
+                className="font-mono text-xs tabular text-volt hover:underline">
                 {shortAddr(address, 8, 6)} ↗
               </a>
             </div>
           </aside>
         </div>
+
+        {/* Resolve dialog */}
+        <Dialog open={showResolve} onOpenChange={(o) => !o && setShowResolve(false)}>
+          <DialogContent className="max-w-sm p-0 overflow-y-auto">
+            <div className="p-8 space-y-6">
+              <div>
+                <DialogTitle>Resolve market</DialogTitle>
+                <DialogDescription>
+                  You are the resolver. Pick the outcome.
+                </DialogDescription>
+              </div>
+              <p className="text-ink-dim text-sm">{market.question}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Button size="lg" onClick={() => handleResolve(true)} loading={resolveBusy}>
+                  <TrendingUp className="h-4 w-4" /> YES wins
+                </Button>
+                <Button size="lg" variant="danger" onClick={() => handleResolve(false)} loading={resolveBusy}>
+                  <TrendingDown className="h-4 w-4" /> NO wins
+                </Button>
+              </div>
+              <p className="label-micro text-center">This action is final on-chain.</p>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </section>
   );
 }
 
-function StatBox({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: string;
-  accent?: 'volt' | 'coral';
-}) {
+function StatBox({ label, value, accent }: { label: string; value: string; accent?: 'volt' | 'coral' }) {
   return (
     <div className="rounded-xl border border-line bg-canvas p-3">
       <div className="label-micro mb-1">{label}</div>
@@ -305,30 +351,31 @@ function StatBox({
   );
 }
 
-function estimateReturn(
-  market: { yesReserve: bigint; noReserve: bigint; totalDeposited: bigint; yesPrice: number },
-  betYes: boolean,
-  amountPredq: number,
-): number {
+const INITIAL_RESERVE = 10_000_000_000;
+
+function estimateReturn(market: MarketInfo, betYes: boolean, amountPredq: number) {
   const amount = amountPredq * 1_000_000;
   const k = Number(market.yesReserve) * Number(market.noReserve);
   let sharesOut: number;
+  let winReserve: number;
 
   if (betYes) {
     const newNo = Number(market.noReserve) + amount;
     const newYes = k / newNo;
     sharesOut = Number(market.yesReserve) - newYes;
+    winReserve = newYes;
   } else {
     const newYes = Number(market.yesReserve) + amount;
     const newNo = k / newYes;
     sharesOut = Number(market.noReserve) - newNo;
+    winReserve = newNo;
   }
 
-  // Estimate: if you win, your payout ~ shares * (totalPool + bet) / totalWinShares
   const newTotal = Number(market.totalDeposited) + amount;
-  const winReserve = betYes ? (k / (Number(market.noReserve) + amount)) : (k / (Number(market.yesReserve) + amount));
-  const totalWinShares = 10_000_000_000 - winReserve;
-  if (totalWinShares <= 0) return 0;
-  const payout = (sharesOut / totalWinShares) * newTotal;
-  return payout / 1_000_000;
+  const totalWinShares = INITIAL_RESERVE - winReserve;
+  if (totalWinShares <= 0) return { payout: 0, profit: 0, multiplier: 0, shares: 0 };
+  const payout = (sharesOut / totalWinShares) * newTotal / 1_000_000;
+  const profit = payout - amountPredq;
+  const multiplier = payout / amountPredq;
+  return { payout, profit, multiplier, shares: sharesOut / 1_000_000 };
 }

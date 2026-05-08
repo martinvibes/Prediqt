@@ -2,61 +2,75 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from './use-auth';
-import { getContract, getContractAddress } from '@/lib/contracts';
+import { getContract } from '@/lib/contracts';
 import { toast } from '@/components/ui/toaster';
 
-type CreditStatus = 'idle' | 'loading' | 'encrypted' | 'decrypted' | 'error';
+type CreditStatus = 'idle' | 'loading' | 'decrypted' | 'error';
 
-/**
- * Hook for the user's PREDQ token state.
- *
- * FHE decrypt via the Zama relayer is complex and can fail on testnet.
- * When decrypt fails, we fall back to an *estimated* balance based on
- * the on-chain claim state (hasClaimedSignup → 1000 PREDQ baseline).
- * This keeps the UX working while the relayer pipeline matures.
- */
+// ── Simple module-level state shared across all hook consumers ──
+let _balance: bigint | null = null;
+let _hasClaimed: boolean | null = null;
+let _status: CreditStatus = 'idle';
+let _initAddress: string | null = null;
+const _subs = new Set<() => void>();
+
+function _fire() { _subs.forEach((fn) => fn()); }
+
+function _set(b: bigint | null, c: boolean | null, s: CreditStatus) {
+  _balance = b;
+  _hasClaimed = c;
+  _status = s;
+  _fire();
+}
+
+export function creditDeduct(amount: bigint) {
+  if (_balance !== null) { _balance -= amount; _fire(); }
+}
+export function creditAdd(amount: bigint) {
+  if (_balance !== null) { _balance += amount; _fire(); }
+}
+
 export function useCredit() {
   const { signer, address, status: authStatus } = useAuth();
-  const [hasClaimed, setHasClaimed] = useState<boolean | null>(null);
-  const [balance, setBalance] = useState<bigint | null>(null);
-  const [status, setStatus] = useState<CreditStatus>('idle');
-  const [busy, setBusy] = useState(false);
 
+  // Force re-render when module state changes
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const cb = () => setTick((t) => t + 1);
+    _subs.add(cb);
+    return () => { _subs.delete(cb); };
+  }, []);
+
+  // Fetch on signer/address change
   useEffect(() => {
     if (!signer || !address) {
-      setHasClaimed(null);
-      setBalance(null);
-      setStatus('idle');
+      if (_status !== 'idle') _set(null, null, 'idle');
+      _initAddress = null;
       return;
     }
-    let cancelled = false;
+    // Already fetched for this address
+    if (_initAddress === address && _status === 'decrypted') return;
+
+    _initAddress = address;
+    _set(_balance, _hasClaimed, 'loading');
+
+    const addr = address;
     (async () => {
       try {
-        setStatus('loading');
         const credit = getContract('PredqCredit', signer);
-        const claimed = await credit.hasClaimedSignup(address);
-        if (cancelled) return;
-        setHasClaimed(claimed);
-
-        if (claimed) {
-          // FHE balance is encrypted — we can't read the exact value without
-          // the relayer decrypt pipeline. Show estimated value.
-          setBalance(1_000_000_000n); // 1000 PREDQ as baseline
-          setStatus('decrypted');
-        } else {
-          setBalance(0n);
-          setStatus('encrypted');
-        }
+        const claimed: boolean = await credit.hasClaimedSignup(addr);
+        // Only update if address hasn't changed while we awaited
+        if (_initAddress !== addr) return;
+        _set(claimed ? 1_000_000_000n : 0n, claimed, 'decrypted');
       } catch (e: any) {
-        if (cancelled) return;
+        if (_initAddress !== addr) return;
         console.error('[useCredit] init failed', e);
-        setStatus('error');
+        _set(null, null, 'error');
       }
     })();
-    return () => {
-      cancelled = true;
-    };
   }, [signer, address]);
+
+  const [busy, setBusy] = useState(false);
 
   const claimSignup = useCallback(async () => {
     if (!signer) throw new Error('Not connected');
@@ -64,32 +78,17 @@ export function useCredit() {
     try {
       const credit = getContract('PredqCredit', signer);
       const tx = await credit.claimSignupCredits();
-      toast({
-        title: 'Mint pending',
-        description: 'Your 1,000 PREDQ are being encrypted to you.',
-      });
+      toast({ title: 'Mint pending', description: 'Encrypting 1,000 PREDQ…' });
       const receipt = await tx.wait();
       toast({
-        title: '+1,000 PREDQ',
-        description: 'Welcome. Your balance is encrypted on-chain.',
-        variant: 'success',
-        action: receipt?.hash
-          ? { label: 'View tx', href: `https://sepolia.etherscan.io/tx/${receipt.hash}` }
-          : undefined,
+        title: '+1,000 PREDQ', description: 'Welcome.', variant: 'success',
+        action: receipt?.hash ? { label: 'View tx', href: `https://sepolia.etherscan.io/tx/${receipt.hash}` } : undefined,
       });
-      setHasClaimed(true);
-      setBalance(1_000_000_000n);
-      setStatus('decrypted');
+      _set(1_000_000_000n, true, 'decrypted');
     } catch (e: any) {
-      toast({
-        title: 'Mint failed',
-        description: e?.shortMessage ?? e?.message ?? 'unknown error',
-        variant: 'error',
-      });
+      toast({ title: 'Mint failed', description: e?.shortMessage ?? e?.message ?? 'unknown', variant: 'error' });
       throw e;
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   }, [signer]);
 
   const claimFaucet = useCallback(async () => {
@@ -98,36 +97,22 @@ export function useCredit() {
     try {
       const credit = getContract('PredqCredit', signer);
       const tx = await credit.claimFaucet();
-      const receipt = await tx.wait();
-      toast({
-        title: '+100 PREDQ',
-        description: 'Weekly top-up landed.',
-        variant: 'success',
-        action: receipt?.hash
-          ? { label: 'View tx', href: `https://sepolia.etherscan.io/tx/${receipt.hash}` }
-          : undefined,
-      });
-      // Bump estimated balance
-      setBalance((prev) => (prev ?? 0n) + 100_000_000n);
+      await tx.wait();
+      toast({ title: '+100 PREDQ', variant: 'success' });
+      creditAdd(100_000_000n);
     } catch (e: any) {
-      toast({
-        title: 'Faucet failed',
-        description: e?.shortMessage ?? e?.message ?? 'unknown error',
-        variant: 'error',
-      });
-    } finally {
-      setBusy(false);
-    }
+      toast({ title: 'Faucet failed', description: e?.shortMessage ?? e?.message ?? 'unknown', variant: 'error' });
+    } finally { setBusy(false); }
   }, [signer]);
 
   return {
-    hasClaimed,
-    balance,
-    status,
+    hasClaimed: _hasClaimed,
+    balance: _balance,
+    status: _status,
     busy,
     claimSignup,
     claimFaucet,
-    refresh: () => {}, // no-op until relayer decrypt works
+    refresh: () => { _initAddress = null; },
     isReady: authStatus === 'authenticated',
   };
 }

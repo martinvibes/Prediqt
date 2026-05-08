@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Lock, Globe2, Users, Calendar, UserPlus, Plus } from 'lucide-react';
@@ -18,14 +18,14 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useRoom } from '@/hooks/use-rooms';
+import { useRoom, useAutoJoinPublicRoom } from '@/hooks/use-rooms';
 import { useRoomMarkets, useCreateMarket } from '@/hooks/use-markets';
 import { useAuth } from '@/hooks/use-auth';
 import { RoomType } from '@prediqt/shared';
 import { shortAddr, cn } from '@/lib/utils';
 
-export default function RoomPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function RoomPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const roomId = (() => {
     try { return BigInt(id); } catch { return null; }
   })();
@@ -43,8 +43,9 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
 
 function RoomContent({ roomId }: { roomId: bigint }) {
   const { address } = useAuth();
-  const { room, members, loading } = useRoom(roomId);
+  const { room, members, loading, refresh: refreshRoom } = useRoom(roomId);
   const { markets, loading: mktsLoading, refresh: refreshMarkets } = useRoomMarkets(roomId);
+  const { joined, joining } = useAutoJoinPublicRoom(roomId);
   const [showCreate, setShowCreate] = useState(false);
 
   if (loading) {
