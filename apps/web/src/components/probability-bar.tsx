@@ -34,10 +34,10 @@ export function ProbabilityBar({
       {showLabels && (
         <div className="flex justify-between font-mono text-[11px] tabular">
           <span className={cn(isUp ? 'text-up' : 'text-ink-muted')}>
-            {clamped.toFixed(0)}% <span className="text-ink-ghost">yes</span>
+            {clamped.toFixed(1)}% <span className="text-ink-ghost">yes</span>
           </span>
           <span className={cn(!isUp ? 'text-down' : 'text-ink-muted')}>
-            <span className="text-ink-ghost">no</span> {noPercent.toFixed(0)}%
+            <span className="text-ink-ghost">no</span> {noPercent.toFixed(1)}%
           </span>
         </div>
       )}

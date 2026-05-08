@@ -14,7 +14,7 @@ import { SUPPORTED_CHAINS } from '@prediqt/shared';
  * for a testnet demo). Sends 0.005 ETH (~enough for 15+ txs).
  */
 
-const DRIP_AMOUNT = parseEther('0.005');
+const DRIP_AMOUNT = parseEther('0.05');
 const dripped = new Set<string>();
 
 function getProvider() {
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
 
     // Check if they already have enough ETH (>= 0.002)
     const existing = await provider.getBalance(address);
-    if (existing >= parseEther('0.002')) {
+    if (existing >= parseEther('0.02')) {
       dripped.add(normalized);
       return NextResponse.json({ status: 'sufficient', amount: '0' });
     }

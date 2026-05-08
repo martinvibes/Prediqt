@@ -1,10 +1,10 @@
 {
   "chainId": 11155111,
   "network": "sepolia",
-  "deployedAt": "2026-05-06T16:32:37.523Z",
+  "deployedAt": "2026-05-08T09:08:01.136Z",
   "contracts": {
-    "PredqCredit": "0x76Ddb91925d0a5DdC65d9F5333f57f158f24130E",
-    "RoomRegistry": "0xD98Ae5eE1612EDc1E6425B55b3CaD6b7e12dfd06",
-    "MarketFactory": "0x8aE955787036c4459A057A06A7f62a19FE6c8713"
+    "PredqCredit": "0x862d9142a188EB9E73F34a37b8CBa17A34882358",
+    "RoomRegistry": "0xa04B8e524ca8287dfC3d3845d14c452b09c02353",
+    "MarketFactory": "0x6f5Dbd9ab55c1108EAb3612A533CE7d2D9f565c7"
   }
 }

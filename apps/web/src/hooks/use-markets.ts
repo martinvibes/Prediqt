@@ -49,9 +49,17 @@ async function fetchMarketInfo(factory: Contract, id: bigint): Promise<MarketInf
       resolveAt: BigInt(meta.resolveAt), createdAt: BigInt(meta.createdAt),
       yesReserve: BigInt(info._yesReserve), noReserve: BigInt(info._noReserve),
       totalDeposited: BigInt(info._totalDeposited), totalBettors: Number(info._totalBettors),
-      yesPrice: Number(info._yesPrice), status: Number(info._status), outcome: info._outcome,
+      yesPrice: computePrice(BigInt(info._noReserve), BigInt(info._yesReserve)),
+      status: Number(info._status), outcome: info._outcome,
     };
   } catch (e) { console.error(`[fetchMarketInfo] market ${id}`, e); return null; }
+}
+
+/** Compute YES price as a float (0-100) with decimal precision from reserves. */
+function computePrice(noReserve: bigint, yesReserve: bigint): number {
+  const total = Number(noReserve) + Number(yesReserve);
+  if (total === 0) return 50;
+  return (Number(noReserve) / total) * 100;
 }
 
 export function useRoomMarkets(roomId: bigint | null) {
@@ -89,6 +97,41 @@ export function useAllMarkets() {
   return { markets, loading, refresh };
 }
 
+/** Returns all markets where the current user has placed a bet. */
+export function useMyBets() {
+  const { signer, address } = useAuth();
+  const { markets, loading: mktsLoading } = useAllMarkets();
+  const [myBets, setMyBets] = useState<MarketInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (mktsLoading || !address || markets.length === 0) {
+      if (!mktsLoading) setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const runner = signer ?? readProvider();
+        const checks = await Promise.all(
+          markets.map(async (m) => {
+            try {
+              const mc = getMarketContract(m.marketAddress, runner);
+              const has: boolean = await mc.hasBet(address);
+              return has ? m : null;
+            } catch { return null; }
+          }),
+        );
+        if (!cancelled) setMyBets(checks.filter(Boolean) as MarketInfo[]);
+      } finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [markets, mktsLoading, address, signer]);
+
+  return { myBets, loading };
+}
+
 export function useMarket(marketAddress: string | null) {
   const { signer } = useAuth();
   const [market, setMarket] = useState<MarketInfo | null>(null);
@@ -111,7 +154,8 @@ export function useMarket(marketAddress: string | null) {
         resolveAt: BigInt(meta.resolveAt), createdAt: BigInt(meta.createdAt),
         yesReserve: BigInt(info._yesReserve), noReserve: BigInt(info._noReserve),
         totalDeposited: BigInt(info._totalDeposited), totalBettors: Number(info._totalBettors),
-        yesPrice: Number(info._yesPrice), status: Number(info._status), outcome: info._outcome,
+        yesPrice: computePrice(BigInt(info._noReserve), BigInt(info._yesReserve)),
+        status: Number(info._status), outcome: info._outcome,
       });
       if (signer) {
         const addr = await signer.getAddress();
@@ -133,8 +177,14 @@ export function useCreateMarket() {
       setBusy(true);
       try {
         const factory = getContract('MarketFactory', signer);
-        const tx = await factory.createMarket(roomId, question, BigInt(resolveAt), '0x0000000000000000000000000000000000000000');
-        toast({ title: 'Creating market…', description: 'Submitted to Sepolia.' });
+        // createMarket deploys a contract — needs high gas limit.
+        // Explicit limit avoids estimation failures with Web3Auth wallets.
+        const tx = await factory.createMarket(
+          roomId, question, BigInt(resolveAt),
+          '0x0000000000000000000000000000000000000000',
+          { gasLimit: 2_000_000 },
+        );
+        toast({ title: 'Creating market…', description: 'Deploying contract on Sepolia. This takes ~15s.' });
         const receipt = await tx.wait();
         const log = receipt?.logs.find((l: any) => {
           try { return factory.interface.parseLog(l)?.name === 'MarketCreated'; } catch { return false; }
@@ -148,6 +198,14 @@ export function useCreateMarket() {
         }
         toast({ title: 'Market live', description: question.slice(0, 60), variant: 'success' });
         return { id: newId, address: marketAddr, txHash: receipt?.hash };
+      } catch (e: any) {
+        console.error('[useCreateMarket]', e);
+        toast({
+          title: 'Market creation failed',
+          description: e?.shortMessage ?? e?.reason ?? e?.message ?? 'Unknown error',
+          variant: 'error',
+        });
+        throw e;
       } finally { setBusy(false); }
     }, [signer],
   );
@@ -163,7 +221,7 @@ export function usePlaceBet() {
       setBusy(true);
       try {
         const mc = getMarketContract(marketAddress, signer);
-        const tx = await mc.bet(betYes, amount);
+        const tx = await mc.bet(betYes, amount, { gasLimit: 800_000 });
         const side = betYes ? 'YES' : 'NO';
         const display = `${Number(amount) / 1_000_000} PREDQ`;
         toast({ title: `Betting ${side}…`, description: display });

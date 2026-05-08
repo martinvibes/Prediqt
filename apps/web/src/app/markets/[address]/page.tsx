@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Clock, Users, TrendingUp, TrendingDown, Gavel, Gift, ArrowUpRight } from 'lucide-react';
+import { ArrowLeft, Clock, TrendingUp, TrendingDown, Gavel, Gift, ArrowUpRight } from 'lucide-react';
 
 import { Nav } from '@/components/nav';
 import { Footer } from '@/components/footer';
@@ -15,6 +15,7 @@ import { Sparkline } from '@/components/sparkline';
 import { EncryptedReveal } from '@/components/encrypted-reveal';
 import { QMark } from '@/components/q-mark';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useMarket, usePlaceBet, useResolveMarket, useClaimPayout, type MarketInfo } from '@/hooks/use-markets';
 import { useAuth } from '@/hooks/use-auth';
 import { relativeTime, formatPredq, shortAddr, cn } from '@/lib/utils';
@@ -38,6 +39,8 @@ function MarketContent({ address }: { address: string }) {
   const [amount, setAmount] = useState('');
   const [side, setSide] = useState<'yes' | 'no' | null>(null);
   const [showResolve, setShowResolve] = useState(false);
+  const [showBetConfirm, setShowBetConfirm] = useState(false);
+  const [showClaimConfirm, setShowClaimConfirm] = useState(false);
 
   if (loading) return <div className="flex-1 px-5 pt-12"><div className="mx-auto max-w-[960px]"><div className="skeleton h-64 rounded-2xl" /></div></div>;
   if (!market) return <div className="flex-1 flex items-center justify-center"><QMark size={40} className="opacity-30" /></div>;
@@ -53,7 +56,13 @@ function MarketContent({ address }: { address: string }) {
 
   const handleBet = async () => {
     if (!canBet) return;
+    setShowBetConfirm(false);
     try { await placeBet(address, side === 'yes', amountRaw); setAmount(''); setSide(null); refresh(); } catch {}
+  };
+
+  const handleClaim = async () => {
+    setShowClaimConfirm(false);
+    try { await claim(address); refresh(); } catch {}
   };
 
   return (
@@ -76,12 +85,10 @@ function MarketContent({ address }: { address: string }) {
             )}
           </div>
           <h1 className="font-display text-stat tracking-crunch mb-5">{market.question}</h1>
-
-          {/* Big probability + sparkline */}
           <div className="flex items-end justify-between gap-6 mb-4">
             <div className="flex items-baseline gap-3">
               <span className={cn('font-mono text-6xl tabular font-bold tracking-tightest', isUp ? 'text-up' : 'text-down')}>
-                {market.yesPrice}%
+                {market.yesPrice.toFixed(1)}%
               </span>
               <span className="label">yes</span>
             </div>
@@ -96,25 +103,19 @@ function MarketContent({ address }: { address: string }) {
             {isOpen ? (
               <div className="surface p-6 space-y-5">
                 <div className="label">Place your bet</div>
-
                 <div className="grid grid-cols-2 gap-2">
                   {(['yes', 'no'] as const).map((s) => {
                     const active = side === s;
                     const isYes = s === 'yes';
                     return (
-                      <button
-                        key={s}
-                        onClick={() => setSide(s)}
+                      <button key={s} onClick={() => setSide(s)}
                         className={cn(
                           'flex flex-col items-center justify-center h-20 rounded-xl border-2 transition-all duration-200',
-                          active
-                            ? isYes ? 'border-up bg-up-dim' : 'border-down bg-down-dim'
-                            : 'border-line hover:border-line-strong',
-                        )}
-                      >
+                          active ? isYes ? 'border-up bg-up-dim' : 'border-down bg-down-dim' : 'border-line hover:border-line-strong',
+                        )}>
                         {isYes ? <TrendingUp className={cn('h-5 w-5 mb-1', active ? 'text-up' : 'text-ink-ghost')} /> : <TrendingDown className={cn('h-5 w-5 mb-1', active ? 'text-down' : 'text-ink-ghost')} />}
                         <span className="font-mono text-sm uppercase tracking-[0.12em]">{s}</span>
-                        <span className="font-mono text-[11px] tabular text-ink-ghost">{isYes ? market.yesPrice : 100 - market.yesPrice}%</span>
+                        <span className="font-mono text-[11px] tabular text-ink-ghost">{(isYes ? market.yesPrice : 100 - market.yesPrice).toFixed(1)}%</span>
                       </button>
                     );
                   })}
@@ -137,18 +138,28 @@ function MarketContent({ address }: { address: string }) {
                 </div>
 
                 {est && (
-                  <div className="rounded-xl bg-up-dim border border-up/20 p-4 space-y-1">
-                    <div className="label text-up flex items-center gap-1"><Gift className="h-3 w-3" /> If {side} wins</div>
-                    <div className="flex items-baseline gap-3">
-                      <span className="font-mono text-2xl tabular text-up font-semibold">{est.payout.toFixed(1)} PREDQ</span>
-                      <span className={cn('font-mono text-sm tabular', est.multiplier >= 2 ? 'text-up' : 'text-ink-muted')}>{est.multiplier.toFixed(2)}x</span>
+                  <div className={cn('rounded-xl p-4 space-y-1',
+                    side === 'yes' ? 'bg-up-dim border border-up/20' : 'bg-down-dim border border-down/20',
+                  )}>
+                    <div className={cn('label flex items-center gap-1', side === 'yes' ? 'text-up' : 'text-down')}>
+                      <Gift className="h-3 w-3" /> If {side} wins
                     </div>
-                    <div className="label text-ink-ghost">+{est.profit.toFixed(1)} profit · {est.shares.toFixed(0)} shares</div>
+                    <div className="flex items-baseline gap-3">
+                      <span className={cn('font-mono text-2xl tabular font-semibold', side === 'yes' ? 'text-up' : 'text-down')}>
+                        {est.payout.toFixed(1)} PREDQ
+                      </span>
+                      <span className={cn('font-mono text-sm tabular', est.multiplier >= 1.5 ? (side === 'yes' ? 'text-up' : 'text-down') : 'text-ink-muted')}>
+                        {est.multiplier.toFixed(2)}x
+                      </span>
+                    </div>
+                    <div className="label text-ink-ghost">
+                      +{est.profit.toFixed(1)} profit · {est.shares.toFixed(1)} shares
+                    </div>
                   </div>
                 )}
 
                 <Button size="xl" className="w-full" variant={side === 'no' ? 'danger' : 'primary'}
-                  disabled={!canBet} loading={betBusy} onClick={handleBet}>
+                  disabled={!canBet} onClick={() => setShowBetConfirm(true)}>
                   {side ? `Bet ${side.toUpperCase()} · ${amountPredq || 0} PREDQ` : 'Select YES or NO'}
                 </Button>
               </div>
@@ -160,7 +171,11 @@ function MarketContent({ address }: { address: string }) {
                 <h3 className="font-display text-2xl tracking-crunch">
                   Resolved: <span className={market.outcome ? 'text-up' : 'text-down'}>{market.outcome ? 'YES' : 'NO'}</span>
                 </h3>
-                {hasPosition && <Button size="lg" onClick={() => claim(address).then(refresh)} loading={claimBusy}><Gift className="h-4 w-4" />Claim payout</Button>}
+                {hasPosition && (
+                  <Button size="lg" onClick={() => setShowClaimConfirm(true)} loading={claimBusy}>
+                    <Gift className="h-4 w-4" /> Claim payout
+                  </Button>
+                )}
               </div>
             )}
           </motion.div>
@@ -170,13 +185,12 @@ function MarketContent({ address }: { address: string }) {
             <div className="surface p-5 space-y-3">
               <div className="label">Stats</div>
               <div className="grid grid-cols-2 gap-2">
-                <Stat label="Pool" value={`${formatPredq(market.totalDeposited, { compact: true })}`} />
-                <Stat label="Bettors" value={market.totalBettors.toString()} />
-                <Stat label="YES" value={`${market.yesPrice}%`} color="text-up" />
-                <Stat label="NO" value={`${100 - market.yesPrice}%`} color="text-down" />
+                <StatCell label="Pool" value={`${formatPredq(market.totalDeposited, { compact: true })}`} />
+                <StatCell label="Bettors" value={market.totalBettors.toString()} />
+                <StatCell label="YES" value={`${market.yesPrice.toFixed(1)}%`} color="text-up" />
+                <StatCell label="NO" value={`${(100 - market.yesPrice).toFixed(1)}%`} color="text-down" />
               </div>
             </div>
-
             {hasPosition && (
               <div className="surface border-volt/20 p-5 space-y-2">
                 <div className="label text-volt">Your position</div>
@@ -184,7 +198,6 @@ function MarketContent({ address }: { address: string }) {
                 {userNo > 0n && <div className="flex justify-between"><span className="label">no shares</span><span className="font-mono text-sm tabular text-down"><EncryptedReveal value={formatPredq(userNo, { compact: true })} duration={600} /></span></div>}
               </div>
             )}
-
             <div className="surface p-5 space-y-2">
               <div className="label">Contract</div>
               <a href={`https://sepolia.etherscan.io/address/${address}`} target="_blank" rel="noreferrer"
@@ -195,6 +208,7 @@ function MarketContent({ address }: { address: string }) {
           </aside>
         </div>
 
+        {/* ── Resolve dialog ── */}
         <Dialog open={showResolve} onOpenChange={(o) => !o && setShowResolve(false)}>
           <DialogContent className="max-w-sm">
             <DialogTitle>Resolve market</DialogTitle>
@@ -210,12 +224,50 @@ function MarketContent({ address }: { address: string }) {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* ── Bet confirmation ── */}
+        <ConfirmDialog
+          open={showBetConfirm}
+          onClose={() => setShowBetConfirm(false)}
+          onConfirm={handleBet}
+          loading={betBusy}
+          icon={side === 'yes' ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
+          title={`Bet ${(side ?? '').toUpperCase()} on this market?`}
+          description="This submits an on-chain transaction. Your PREDQ will be transferred to the market contract."
+          details={[
+            { label: 'Side', value: (side ?? '').toUpperCase(), accent: side === 'yes' ? 'up' : 'down' },
+            { label: 'Amount', value: `${amountPredq} PREDQ`, accent: 'volt' },
+            { label: 'Current price', value: `${side === 'yes' ? market.yesPrice : 100 - market.yesPrice}%` },
+            ...(est ? [
+              { label: 'Est. return', value: `${est.payout.toFixed(1)} PREDQ (${est.multiplier.toFixed(2)}x)`, accent: 'up' as const },
+            ] : []),
+          ]}
+          confirmLabel={`Bet ${(side ?? '').toUpperCase()}`}
+          confirmVariant={side === 'no' ? 'danger' : 'primary'}
+        />
+
+        {/* ── Claim confirmation ── */}
+        <ConfirmDialog
+          open={showClaimConfirm}
+          onClose={() => setShowClaimConfirm(false)}
+          onConfirm={handleClaim}
+          loading={claimBusy}
+          icon={<Gift className="h-5 w-5" />}
+          title="Claim your payout?"
+          description="Your winnings will be transferred to your wallet."
+          details={[
+            { label: 'Outcome', value: market.outcome ? 'YES won' : 'NO won', accent: market.outcome ? 'up' : 'down' },
+            { label: 'Your YES shares', value: formatPredq(userYes, { compact: true }) },
+            { label: 'Your NO shares', value: formatPredq(userNo, { compact: true }) },
+          ]}
+          confirmLabel="Claim"
+        />
       </div>
     </section>
   );
 }
 
-function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
+function StatCell({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <div className="rounded-lg bg-canvas-raised border border-line p-3">
       <div className="label mb-1">{label}</div>
@@ -224,25 +276,34 @@ function Stat({ label, value, color }: { label: string; value: string; color?: s
   );
 }
 
-const INITIAL_RESERVE = 10_000_000_000;
+// ── Return estimate ──
+// Standard prediction market formula: at probability P, your return = amount / P.
+// This is how Polymarket, Kalshi, and Manifold display estimated returns.
+// The AMM handles pricing; this shows what you'd win at fair odds.
 function estimateReturn(market: MarketInfo, betYes: boolean, amountPredq: number) {
-  const amount = amountPredq * 1_000_000;
-  const k = Number(market.yesReserve) * Number(market.noReserve);
-  let sharesOut: number, winReserve: number;
+  // Current probability of the chosen side
+  const prob = betYes
+    ? market.yesPrice / 100
+    : (100 - market.yesPrice) / 100;
+
+  if (prob <= 0 || prob >= 1) return { payout: 0, profit: 0, multiplier: 0, shares: 0 };
+
+  // Theoretical return at current odds
+  const payout = amountPredq / prob;
+  const profit = payout - amountPredq;
+  const multiplier = 1 / prob;
+
+  // Shares from AMM (for display)
+  const SCALE = 1_000_000;
+  const yR = Number(market.yesReserve) / SCALE;
+  const nR = Number(market.noReserve) / SCALE;
+  const k = yR * nR;
+  let shares: number;
   if (betYes) {
-    const newNo = Number(market.noReserve) + amount;
-    const newYes = k / newNo;
-    sharesOut = Number(market.yesReserve) - newYes;
-    winReserve = newYes;
+    shares = yR - k / (nR + amountPredq);
   } else {
-    const newYes = Number(market.yesReserve) + amount;
-    const newNo = k / newYes;
-    sharesOut = Number(market.noReserve) - newNo;
-    winReserve = newNo;
+    shares = nR - k / (yR + amountPredq);
   }
-  const newTotal = Number(market.totalDeposited) + amount;
-  const totalWinShares = INITIAL_RESERVE - winReserve;
-  if (totalWinShares <= 0) return { payout: 0, profit: 0, multiplier: 0, shares: 0 };
-  const payout = (sharesOut / totalWinShares) * newTotal / 1_000_000;
-  return { payout, profit: payout - amountPredq, multiplier: payout / amountPredq, shares: sharesOut / 1_000_000 };
+
+  return { payout, profit, multiplier, shares: Math.max(0, shares) };
 }

@@ -88,7 +88,7 @@ export function MarketCard({
                 compact ? 'text-2xl' : 'text-3xl',
                 isUp ? 'text-up' : 'text-down',
               )}>
-                {market.yesPrice}%
+                {market.yesPrice.toFixed(1)}%
               </div>
               <Sparkline
                 seed={market.marketAddress}

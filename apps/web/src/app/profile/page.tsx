@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { useState } from 'react';
 import { Copy, Droplet, Wallet, Activity, Bot, Users, ArrowUpRight } from 'lucide-react';
 
 import { Nav } from '@/components/nav';
@@ -11,10 +12,11 @@ import { Button } from '@/components/ui/button';
 import { EncryptedReveal } from '@/components/encrypted-reveal';
 import { MarketCard } from '@/components/market-card';
 import { QMark } from '@/components/q-mark';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { useCredit } from '@/hooks/use-credit';
 import { useMyRooms } from '@/hooks/use-rooms';
-import { useAllMarkets } from '@/hooks/use-markets';
+import { useMyBets } from '@/hooks/use-markets';
 import { formatPredq, shortAddr } from '@/lib/utils';
 import { toast } from '@/components/ui/toaster';
 
@@ -32,8 +34,8 @@ function ProfileContent() {
   const { address } = useAuth();
   const { balance, status, claimFaucet, busy, hasClaimed } = useCredit();
   const myRooms = useMyRooms();
-  const { markets } = useAllMarkets();
-  const myMarkets = markets.filter((m) => address && m.creator.toLowerCase() === address.toLowerCase());
+  const { myBets: myMarkets, loading: betsLoading } = useMyBets();
+  const [showFaucetConfirm, setShowFaucetConfirm] = useState(false);
 
   const copyAddr = async () => {
     if (!address) return;
@@ -65,7 +67,7 @@ function ProfileContent() {
               <div className="flex items-center gap-2 pt-2">
                 <Button variant="outline" size="sm" onClick={copyAddr}><Copy className="h-3 w-3" /> Copy</Button>
                 {hasClaimed && (
-                  <Button variant="ghost" size="sm" onClick={claimFaucet} loading={busy}>
+                  <Button variant="ghost" size="sm" onClick={() => setShowFaucetConfirm(true)}>
                     <Droplet className="h-3 w-3" /> +100 Faucet
                   </Button>
                 )}
@@ -82,11 +84,15 @@ function ProfileContent() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Markets */}
           <div className="lg:col-span-8 space-y-4">
-            <div className="label flex items-center gap-2"><Activity className="h-3 w-3" /> Your markets</div>
-            {myMarkets.length === 0 ? (
+            <div className="label flex items-center gap-2"><Activity className="h-3 w-3" /> Active bets</div>
+            {betsLoading ? (
+              <div className="space-y-3">
+                {[1, 2].map((i) => <div key={i} className="skeleton h-36 rounded-2xl" />)}
+              </div>
+            ) : myMarkets.length === 0 ? (
               <div className="surface-glass text-center py-16 space-y-3">
                 <QMark size={32} className="mx-auto opacity-20" />
-                <p className="text-ink-muted text-sm">Post a question in a room to see your markets here.</p>
+                <p className="text-ink-muted text-sm">Markets you bet on will appear here.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -122,6 +128,20 @@ function ProfileContent() {
             </div>
           </aside>
         </div>
+        <ConfirmDialog
+          open={showFaucetConfirm}
+          onClose={() => setShowFaucetConfirm(false)}
+          onConfirm={async () => { setShowFaucetConfirm(false); await claimFaucet(); }}
+          loading={busy}
+          icon={<Droplet className="h-5 w-5" />}
+          title="Claim weekly faucet?"
+          description="This mints 100 PREDQ to your encrypted balance. Available once per week."
+          details={[
+            { label: 'Amount', value: '+100 PREDQ', accent: 'volt' },
+            { label: 'Cooldown', value: '7 days' },
+          ]}
+          confirmLabel="Claim 100 PREDQ"
+        />
       </div>
     </section>
   );

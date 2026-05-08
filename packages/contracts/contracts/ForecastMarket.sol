@@ -40,7 +40,7 @@ contract ForecastMarket {
     event Resolved(bool outcome);
     event PayoutClaimed(address indexed bettor, uint64 payout);
 
-    uint64 constant INITIAL_RESERVE = 10_000_000_000; // 10,000 PREDQ each side
+    uint64 constant INITIAL_RESERVE = 5_000_000_000; // 5,000 PREDQ virtual liquidity each side
 
     constructor(
         uint256 _marketId,
