@@ -5,13 +5,17 @@ import * as path from 'node:path';
 /**
  * Server-side log of agent activity. Each successful bet/resolution gets
  * appended here so the UI can show "Quanta bet 10 NO because..." instead of
- * an anonymous pool number. Persists across restarts via a JSON file at the
- * repo root (gitignored).
+ * an anonymous pool number.
  *
- * For real production this should be a database, but for the MVP demo a
- * file is sufficient and keeps the deploy story simple.
+ * On Vercel: process.cwd() is READ-ONLY. We must write to /tmp/.
+ * On local dev: process.cwd() is fine and survives restarts.
+ *
+ * Either way the backfill (ensureBackfilled) re-seeds from on-chain events
+ * if the file is missing, so data always comes back after a cold start.
  */
-const FILE = path.resolve(process.cwd(), '.agent-activity.json');
+const FILE = process.env.VERCEL
+  ? '/tmp/.agent-activity.json'
+  : path.resolve(process.cwd(), '.agent-activity.json');
 
 export interface AgentBetRecord {
   kind: 'bet';
